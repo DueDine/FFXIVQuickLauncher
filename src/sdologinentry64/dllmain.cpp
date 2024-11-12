@@ -105,8 +105,15 @@ void SetupConsole()
 }
 
 BOOL IsSdo = true;
-char *SessionId = NULL;
-char *SndaId = NULL;
+
+// Client::System::Framework::GameWindow
+// [FieldOffset(0x00)] public ulong ArgumentCount;
+// [FieldOffset(0x08)] public byte** Arguments; // string argList[ArgumentCount]
+// [FieldOffset(0x61)] public byte Flag;
+// 0x88 jb
+// [FieldOffset(0xA0)] public byte* SessionId
+// [FieldOffset(0xA8)] public byte* SndaID //AID
+// [FieldOffset(0xB8)] public byte* cmdLine prams
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 入口函数
 BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, PVOID pvReserved)
@@ -117,35 +124,12 @@ BOOL WINAPI DllMain(HMODULE hModule, DWORD dwReason, PVOID pvReserved)
 #ifdef _DEBUG
         SetupConsole();
 #endif // _DEBUG
-        auto cmd = (char *)GetCommandLine();
-        // printf_s("cmdline=%ls\n", cmd)
-        int numArgs = 0;
-        LPWSTR *argv = CommandLineToArgvW(GetCommandLine(), &numArgs);
+        auto cmd = GetCommandLineW();
+        printf_s("cmdline=%ls \n", cmd);
         printf_s("%s", "####################IMPORTANT!!!!!######################\n");
         printf_s("%s", "Please blur the DEV.TestSID and XL.SndaId in the following text when you send a screenshot to others.\n");
         printf_s("%s", "########################################################\n");
-        while (numArgs--)
-        {
-            auto cmd = argv[numArgs];
-            printf_s("%ls\n", cmd);
-            if (wcsstr(cmd, L"DEV.TestSID="))
-            {
-                SessionId = new char[wcslen(cmd) + 1];
-                memset((void *)SessionId, 0, sizeof(char) * (wcslen(cmd) + 1));
-                WideCharToMultiByte(CP_ACP, 0, cmd + wcslen(L"DEV.TestSID="), -1, SessionId, wcslen(cmd), NULL, NULL);
-            }
-            else
-            {
-                if (wcsstr(cmd, L"XL.SndaId="))
-                {
-                    SndaId = new char[wcslen(cmd) + 1];
-                    memset((void *)SndaId, 0, sizeof(char) * (wcslen(cmd) + 1));
-                    WideCharToMultiByte(CP_ACP, 0, cmd + wcslen(L"XL.SndaId="), -1, SndaId, wcslen(cmd), NULL, NULL);
-                }
-            }
-        }
-        LocalFree(argv);
-        if (SessionId == NULL)
+        if (!wcsstr(cmd, L"//") && !wcsstr(cmd, L"DEV.TestSID"))
         {
             IsSdo = true;
             return Load(hModule);
@@ -171,10 +155,12 @@ extern "C" __declspec(dllexport) int SDOLGetModule(UINT64 *a, UINT64 *jb)
     printf_s("%s\n", "SDOLGetModule");
     printf_s("%p\n", a);
     printf_s("%p\n", jb);
+
     if (IsSdo)
     {
         return pfnSDOLGetModule(a, jb);
     }
+
     //.text:0000000140058DE7 48 89 6C 24 30                                mov[rsp + 28h + arg_0], rbp
     //.text:0000000140058DEC 48 8B CB                                      mov     rcx, rbx
     //.text:0000000140058DEF 48 89 74 24 38                                mov[rsp + 28h + arg_8], rsi
@@ -189,15 +175,20 @@ extern "C" __declspec(dllexport) int SDOLGetModule(UINT64 *a, UINT64 *jb)
     // jb - 0x20 + 0x40 : sndID
     // jb - 0x20 + 0x50 : cmdLine prams
 
-    auto cmd_line = (char **)(jb - 0x20 / 8 + 0x58 / 8);
-
-    // scanf_s("%s", sid, 0x50);
     auto pSID = jb - 0x20 / 8 + 0x38 / 8;
-    *pSID = (UINT64)SessionId;
-    printf_s("SessionId@%p\n", pSID);
     auto pSndaId = jb - 0x20 / 8 + 0x40 / 8;
-    *pSndaId = (UINT64)SndaId;
+
+    auto zero = jb - 0x20 / 8 - 0x68 / 8;
+    auto args= (char**)*(zero + 0x8 / 8);
+    for (auto i = 0; i < *(int32_t*)zero; i++)
+    {
+        if (strstr(args[i], "DEV.TestSID=")) *pSID = (UINT64)args[i] + 12;
+        if (strstr(args[i], "XL.SndaId=")) *pSndaId = (UINT64)args[i] + 10;
+    }
+    //printf_s("%u\n", *(uint32_t*)zero);
+    printf_s("SessionId@%p\n", pSID);
     printf_s("SndaId@%p\n", pSndaId);
+
     return 0;
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
