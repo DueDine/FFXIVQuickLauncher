@@ -15,9 +15,11 @@
         <StackPanel Orientation="Vertical" Margin="10, 0, 0, 50">
             <StackPanel Orientation="Horizontal">
                 <CheckBox x:Name="UidCacheCheckBox"
+                          Visibility="Hidden"
                           Content="{Binding EnabledUidCacheLoc}"
                           HorizontalAlignment="Left" Margin="0,0,0,0" Foreground="DarkGray" />
                 <Button Style="{DynamicResource MaterialDesignFlatButton}"
+                        Visibility="Collapsed"
                         HorizontalAlignment="Left"
                         Click="ResetCacheButton_OnClick" Margin="0 0 0 0">
                     <Button.ToolTip>
@@ -38,6 +40,7 @@
                       Content="{Binding TreatNonZeroExitCodeAsFailureLoc}"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
             <CheckBox x:Name="ForceNorthAmericaCheckbox"
+                      Visibility="Collapsed"
                       Content="{Binding ForceNorthAmericaLoc}"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
         </StackPanel>
