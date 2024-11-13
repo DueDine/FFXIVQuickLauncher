@@ -18,7 +18,7 @@ namespace XIVLauncher
     internal class Updates
     {
         public event Action<bool>? OnUpdateCheckFinished;
-        private const string UPDATE_URL = "https://aonyx.ffxiv.wang/Proxy/Update/Release";
+        private const string UPDATE_URL = "https://s3.ffxiv.wang/xivlauncher-cn/Releases";
 
 #if DEV_SERVER
         private const string LEASE_META_URL = "http://localhost:5025/Launcher/GetLease";
