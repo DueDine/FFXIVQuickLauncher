@@ -47,39 +47,36 @@ jobs:
             src/bin/hashes.json
       - name: Build Velopack Release
         id: build-velopack
+        env:
+          S3AccessKeyID: ${{ secrets.S3ACCESSKEYID }}
+          S3AccessKeySecret: ${{ secrets.S3ACCESSKEYSECRET }}
+          S3Bucket: ${{ secrets.S3BUCKET }}
+          S3Endpoint: ${{ secrets.S3ENDPOINT }}
         run: |
-          cd src\
-          mkdir Releases
-          $releases = Invoke-WebRequest -Uri 'https://api.github.com/repos/ottercorp/FFXIVQuickLauncher/releases'
-          $current = ConvertFrom-Json -InputObject $releases.Content | Select-Object -First 1
-          $delta_file = $current.assets | Where-Object -Property name -Value "*delta.nupkg" -Like
-          try
-          {
-            Invoke-WebRequest -Uri $delta_file.browser_download_url -OutFile ".\Releases\$($delta_file.name)"
-          }
-          catch
-          {
-          }
-          $full_file = $current.assets | Where-Object -Property name -Value "*full.nupkg" -Like
-          Invoke-WebRequest -Uri $full_file.browser_download_url -OutFile ".\Releases\$($full_file.name)"
           $refver = $env:GITHUB_REF -replace '.*/'
           echo "::set-output name=version::$refver"
+
+          cd src\
+          mkdir Releases
           dotnet tool install -g vpk
-          vpk pack -u XIVLauncherCN -v $refver -p .\bin -o .\Releases -e XIVLauncherCN.exe --releaseNotes .\XIVLauncher\Resources\CHANGELOG.txt --framework net8.0-x64-desktop
+
+          vpk pack -u XIVLauncherCN -v $refver -p .\bin -o .\Releases -e XIVLauncherCN.exe --packAuthors OtterCorp --releaseNotes .\XIVLauncher\Resources\CHANGELOG.txt --icon .\XIVLauncher\Resources\dalamud_icon.ico --splashImage .\XIVLauncher\Resources\logo.png --framework net8.0-x64-desktop
+
           Expand-Archive -Path ".\Releases\XIVLauncherCN-win-Portable.zip" -DestinationPath .\Releases\scratch -Force
-          7z a .\Releases\XIVLauncherCN.7z .\Releases\scratch\* -t7z -mx=9
-          Remove-Item -Force ".\Releases\$($full_file.name)"
-          try
-          {
-            Remove-Item -Force ".\Releases\$($delta_file.name)"
+          7z a .\Releases\XIVLauncherCN-win-Portable.7z .\Releases\scratch\* -t7z -mx=9
+
+          $json = Get-Content -Raw .\Releases\assets.win.json | ConvertFrom-Json
+          for ($i = 0; $i -lt $json.Files.Count; $i++) {
+          $json.Files[$i] = $json.Files[$i] -replace 'zip','7z'
           }
-          catch
-          {
-          }
+          $content = $json | ConvertTo-Json
+          set-content -Path .\Releases\assets.win.json -Value $content
+
+          vpk upload s3 --bucket $env:S3Bucket --endpoint $env:S3Endpoint --keyId $env:S3AccessKeyID --secret $env:S3AccessKeySecret --keepMaxReleases 10
+
           Remove-Item -Force .\Releases\assets.win.json
           Remove-Item -Force .\Releases\XIVLauncherCN-win-Portable.zip
           Remove-Item -Force -Recurse .\Releases\scratch
-          Rename-Item -Force .\Releases\XIVLauncherCN-win-Setup.exe XIVLauncherCN-Setup.exe
       - name: Attest Setup
         if: ${{ github.repository_owner == 'ottercorp' && github.event_name == 'push' }}
         uses: actions/attest-build-provenance@v1
