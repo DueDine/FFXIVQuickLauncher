@@ -12,7 +12,6 @@ jobs:
       contents: write # Must be 'write' to create a release
       attestations: write
     steps:
-      #      - uses: nadock/verified_commits_check@f9b330e987c2e7121dfc0230e65cb5751ee5fac9
       - uses: actions/checkout@v1
       - name: Initialize Submodules
         run: git submodule update --init --recursive
@@ -30,7 +29,7 @@ jobs:
           ($env:REPO_NAME) >> VERSION
           ($env:BRANCH) >> VERSION
           ($env:COMMIT) >> VERSION
-      - name: Build DotNet4 for Release
+      - name: Build Release
         run: |
           cd "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\"
            .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=Release
@@ -45,8 +44,8 @@ jobs:
             src/bin/XIVLauncher.*.dll
             src/bin/XIVLauncher.*.exe
             src/bin/hashes.json
-      - name: Build Velopack Release
-        id: build-velopack
+      - name: Velopack Build and Upload
+        id: velopack
         env:
           S3AccessKeyID: ${{ secrets.S3ACCESSKEYID }}
           S3AccessKeySecret: ${{ secrets.S3ACCESSKEYSECRET }}
@@ -59,7 +58,7 @@ jobs:
           cd src\
           mkdir Releases
           dotnet tool install -g vpk
-
+          vpk download s3 --bucket $env:S3Bucket --endpoint $env:S3Endpoint --keyId $env:S3AccessKeyID --secret $env:S3AccessKeySecret
           vpk pack -u XIVLauncherCN -v $refver -p .\bin -o .\Releases -e XIVLauncherCN.exe --packAuthors OtterCorp --releaseNotes .\XIVLauncher\Resources\CHANGELOG.txt --icon .\XIVLauncher\Resources\dalamud_icon.ico --splashImage .\XIVLauncher\Resources\logo.png --framework net8.0-x64-desktop
 
           Expand-Archive -Path ".\Releases\XIVLauncherCN-win-Portable.zip" -DestinationPath .\Releases\scratch -Force
@@ -73,10 +72,6 @@ jobs:
           set-content -Path .\Releases\assets.win.json -Value $content
 
           vpk upload s3 --bucket $env:S3Bucket --endpoint $env:S3Endpoint --keyId $env:S3AccessKeyID --secret $env:S3AccessKeySecret --keepMaxReleases 10
-
-          Remove-Item -Force .\Releases\assets.win.json
-          Remove-Item -Force .\Releases\XIVLauncherCN-win-Portable.zip
-          Remove-Item -Force -Recurse .\Releases\scratch
       - name: Attest Setup
         if: ${{ github.repository_owner == 'ottercorp' && github.event_name == 'push' }}
         uses: actions/attest-build-provenance@v1
@@ -84,17 +79,8 @@ jobs:
           subject-path: |
             src/Releases/*.exe
             src/Releases/*.nupkg
-            src/Releases/RELEASES
+            src/Releases/*.json
             src/Releases/*.7z
-      - name: Create Release
-        uses: softprops/action-gh-release@a74c6b72af54cfa997e81df42d94703d6313a2d0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: ./src/Releases/**
-          name: Release ${{ steps.build-velopack.outputs.version }}
-          body_path: RELEASE.md
-          prerelease: true
       - name: VirusTotal Scan
         uses: crazy-max/ghaction-virustotal@a3f74cfd584b0658320aec5e94ab6a8d16dca05f
         with:
@@ -130,7 +116,7 @@ jobs:
           ($env:REPO_NAME) >> VERSION
           ($env:BRANCH) >> VERSION
           ($env:COMMIT) >> VERSION
-      - name: Build DotNet4 Master
+      - name: Build
         run: |
           cd "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\"
            .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=ReleaseNoUpdate
