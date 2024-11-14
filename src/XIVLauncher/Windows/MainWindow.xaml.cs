@@ -496,7 +496,7 @@ namespace XIVLauncher.Windows
 
             if (!string.IsNullOrEmpty(item.Url))
             {
-                Process.Start(item.Url);
+                Process.Start(new ProcessStartInfo(item.Url) { UseShellExecute = true });
             }
             //else
             //{
