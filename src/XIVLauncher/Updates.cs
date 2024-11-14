@@ -212,7 +212,10 @@ namespace XIVLauncher
 
             try
             {
-                var mgr = new UpdateManager(UPDATE_URL);
+                var updateOptions = App.Settings.EnableBeta is true
+                                        ? new UpdateOptions { ExplicitChannel = "beta", AllowVersionDowngrade = true }
+                                        : null;
+                var mgr = new UpdateManager(UPDATE_URL, updateOptions);
 
                 // check for new version
                 var newRelease = await mgr.CheckForUpdatesAsync();

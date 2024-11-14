@@ -49,6 +49,7 @@ namespace XIVLauncher.Settings
         int? SelectedServer { get; set; }
         bool FastLogin { get; set; }
         bool EnableInjector { get; set; }
+        bool? EnableBeta { get; set; }
 
         #endregion
     }
