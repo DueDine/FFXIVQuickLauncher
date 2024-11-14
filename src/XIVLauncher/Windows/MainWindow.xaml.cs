@@ -407,7 +407,7 @@ namespace XIVLauncher.Windows
             Model.EnableInjector = App.Settings.EnableInjector;
 
             _accountManager = new AccountManager(App.Settings);
-            if (!this._accountManager.CurrentAccount.Password.IsNullOrEmpty()) ShowPassword_OnClick(null, null);
+            if (this._accountManager.CurrentAccount != null && !_accountManager.CurrentAccount.Password.IsNullOrEmpty()) ShowPassword_OnClick(null, null);
 
             var savedAccount = _accountManager.CurrentAccount;
 
