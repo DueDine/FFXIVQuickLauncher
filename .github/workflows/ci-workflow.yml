@@ -55,8 +55,8 @@ jobs:
           $refver = $env:GITHUB_REF -replace '.*/'
           $desc = $(git describe --tags) -replace '-(.)-.{9}$','.beta.$1'
           if ($refver -ne $desc) {
-          $channel = "beta"
-          $refver = $desc
+            $channel = "beta"
+            $refver = $desc
           }
           echo "::set-output name=version::$refver"
 
