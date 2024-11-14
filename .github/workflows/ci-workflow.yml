@@ -72,6 +72,10 @@ jobs:
           set-content -Path .\Releases\assets.win.json -Value $content
 
           vpk upload s3 --bucket $env:S3Bucket --endpoint $env:S3Endpoint --keyId $env:S3AccessKeyID --secret $env:S3AccessKeySecret --keepMaxReleases 10
+
+          Remove-Item -Force .\Releases\assets.win.json
+          Remove-Item -Force .\Releases\XIVLauncherCN-win-Portable.zip
+          Remove-Item -Force -Recurse .\Releases\scratch
       - name: Attest Setup
         if: ${{ github.repository_owner == 'ottercorp' && github.event_name == 'push' }}
         uses: actions/attest-build-provenance@v1
