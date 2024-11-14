@@ -45,7 +45,7 @@ jobs:
             src/bin/XIVLauncher.*.exe
             src/bin/hashes.json
       - name: Velopack Build and Upload
-        id: velopack
+        id: build-velopack
         env:
           S3AccessKeyID: ${{ secrets.S3ACCESSKEYID }}
           S3AccessKeySecret: ${{ secrets.S3ACCESSKEYSECRET }}
