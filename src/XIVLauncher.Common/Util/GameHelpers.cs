@@ -70,10 +70,15 @@ public static class GameHelpers
             args = "-issteam";
         }
 
-        var sdoLauncher = new Process();
-        sdoLauncher.StartInfo.WorkingDirectory = gamePath.FullName;
-        sdoLauncher.StartInfo.FileName = GetOfficialLauncherPath(gamePath).FullName;
-        sdoLauncher.Start();
+        var startInfo = new ProcessStartInfo(GetOfficialLauncherPath(gamePath).FullName);
+        startInfo.WorkingDirectory = gamePath.FullName;
+        startInfo.UseShellExecute = true;
+
+        //Start as admin if needed
+        if (!EnvironmentSettings.IsNoRunas && Environment.OSVersion.Version.Major >= 6)
+            startInfo.Verb = "runas";
+
+        Process.Start(startInfo);
     }
 
     public static bool CheckIsGameOpen()

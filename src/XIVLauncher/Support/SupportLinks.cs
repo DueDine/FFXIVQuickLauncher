@@ -7,17 +7,17 @@ namespace XIVLauncher.Support
     {
         public static void OpenDiscord(object sender, RoutedEventArgs e)
         {
-            Process.Start("https://discord.gg/QSDmvXG");
+            Process.Start(new ProcessStartInfo("https://discord.gg/QSDmvXG") { UseShellExecute = true });
         }
 
         public static void OpenFaq(object sender, RoutedEventArgs e)
         {
-            Process.Start("https://ottercorp.github.io/faq/who_we_are");
+            Process.Start(new ProcessStartInfo("https://ottercorp.github.io/faq") { UseShellExecute = true });
         }
 
         public static void OpenQQChannel(object sender, RoutedEventArgs e)
         {
-            Process.Start("https://qun.qq.com/qqweb/qunpro/share?inviteCode=CZtWN");
+            Process.Start(new ProcessStartInfo("https://qun.qq.com/qqweb/qunpro/share?inviteCode=CZtWN") { UseShellExecute = true });
         }
     }
 }

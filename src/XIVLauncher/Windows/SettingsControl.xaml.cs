@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -148,7 +148,7 @@ namespace XIVLauncher.Windows
 
         private void GitHubButton_OnClick(object sender, RoutedEventArgs e)
         {
-            Process.Start("https://github.com/ottercorp/FFXIVQuickLauncher");
+            Process.Start(new ProcessStartInfo("https://github.com/ottercorp/FFXIVQuickLauncher") { UseShellExecute = true });
         }
 
         private void BackupToolButton_OnClick(object sender, RoutedEventArgs e)
@@ -331,7 +331,7 @@ namespace XIVLauncher.Windows
             try
             {
                 Directory.CreateDirectory(pluginsPath);
-                Process.Start(pluginsPath);
+                Process.Start(new ProcessStartInfo(pluginsPath) { UseShellExecute = true });
             }
             catch (Exception ex)
             {
@@ -380,7 +380,7 @@ namespace XIVLauncher.Windows
 
         private void LicenseText_OnMouseUp(object sender, MouseButtonEventArgs e)
         {
-            Process.Start(Path.Combine(Paths.ResourcesPath, "LICENSE.txt"));
+            Process.Start(new ProcessStartInfo(Path.Combine(Paths.ResourcesPath, "LICENSE.txt")) { UseShellExecute = true });
         }
 
         private void Logo_OnMouseUp(object sender, MouseButtonEventArgs e)

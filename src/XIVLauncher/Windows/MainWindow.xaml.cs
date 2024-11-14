@@ -480,7 +480,7 @@ namespace XIVLauncher.Windows
             if (e.ChangedButton != MouseButton.Left)
                 return;
 
-            if (_headlines != null) Process.Start(_banners[_currentBannerIndex].Link.ToString());
+            if (_headlines != null) Process.Start(new ProcessStartInfo(_banners[_currentBannerIndex].Link.ToString()) { UseShellExecute = true });
         }
 
         private void NewsListView_OnMouseUp(object sender, MouseButtonEventArgs e)
@@ -539,8 +539,8 @@ namespace XIVLauncher.Windows
 
         private void WorldStatusButton_Click(object sender, RoutedEventArgs e)
         {
-            if (App.Settings.Language == ClientLanguage.ChineseSimplified) Process.Start("https://ff.web.sdo.com/web8/index.html#/servers");
-            else Process.Start("https://is.xivup.com/");
+            if (App.Settings.Language == ClientLanguage.ChineseSimplified) Process.Start(new ProcessStartInfo("https://ff.web.sdo.com/web8/index.html#/servers") { UseShellExecute = true });
+            else Process.Start(new ProcessStartInfo("https://is.xivup.com/") { UseShellExecute = true });
         }
 
         private void QueueButton_OnClick(object sender, RoutedEventArgs e)
