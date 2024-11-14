@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -161,7 +161,7 @@ namespace XIVLauncher.Common.Game.Patch
             this.rpc.SendMessage(new PatcherIpcEnvelope
             {
                 OpCode = PatcherIpcOpCode.Finish,
-                Data = gameDirectory
+                Data = gameDirectory.FullName
             });
         }
 

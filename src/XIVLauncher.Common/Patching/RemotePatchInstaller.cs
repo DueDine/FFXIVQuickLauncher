@@ -92,7 +92,7 @@ public class RemotePatchInstaller
                 break;
 
             case PatcherIpcOpCode.Finish:
-                var path = (DirectoryInfo)envelope.Data;
+                var path = new DirectoryInfo((string)envelope.Data);
 
                 try
                 {
