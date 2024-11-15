@@ -157,7 +157,7 @@ namespace XIVLauncher.Windows
 
         public void OpenQRShortcutInfo_MouseUp(object sender, RoutedEventArgs e)
         {
-            Process.Start($"https://www.daoyu8.com/");
+            Process.Start(new ProcessStartInfo($"https://www.daoyu8.com/") { UseShellExecute = true });
         }
 
         public static void CloseQRWindow(Window parentWindow) {
