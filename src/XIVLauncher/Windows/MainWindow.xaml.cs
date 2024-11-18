@@ -253,40 +253,50 @@ namespace XIVLauncher.Windows
                         var workingDirectory = App.DalamudUpdater.Runner.Directory?.FullName;
                         startInfo.WorkingDirectory = workingDirectory;
                         startInfo.AssetDirectory = App.DalamudUpdater.AssetDirectory.FullName;
+                        startInfo.TroubleshootingPackData = Troubleshooting.GetTroubleshootingJson();
 
                         var newPidList = GetGameProcess();
 
                         var newHash = string.Join(", ", newPidList).GetHashCode();
                         var oldHash = string.Join(", ", oldPidList).GetHashCode();
 
-                        if (oldHash != newHash)
+                        try
                         {
-                            if (newPidList.Except(oldPidList).Any())
+                            if (oldHash != newHash)
                             {
-                                foreach (var pid in newPidList.Except(oldPidList))
+                                if (newPidList.Except(oldPidList).Any())
                                 {
-                                    Log.Information($"Detected new game pid: {pid}");
-
-                                    if (first)
+                                    foreach (var pid in newPidList.Except(oldPidList))
                                     {
-                                        first = false;
-                                        var result = CustomMessageBox.Show($"检测到已经存在游戏进程{pid},即将自动注入,是否要注入?", "自动注入", MessageBoxButton.YesNo);
-                                        if (result == MessageBoxResult.No) continue;
-                                    }
+                                        Log.Information($"Detected new game pid: {pid}");
 
-                                    if (Process.GetProcessById(pid).MainModule?.FileName != Path.Combine(App.Settings.GamePath.FullName, "game", "ffxiv_dx11.exe"))
-                                    {
-                                        var result = CustomMessageBox.Show($"即将注入进程{pid},游戏路径与设置中的路径不符,是否注入?", "自动注入", MessageBoxButton.YesNo);
-                                        if (result == MessageBoxResult.No) continue;
-                                    }
+                                        if (first)
+                                        {
+                                            first = false;
+                                            var result = CustomMessageBox.Show($"检测到已经存在游戏进程{pid},即将自动注入,是否要注入?", "自动注入", MessageBoxButton.YesNo);
+                                            if (result == MessageBoxResult.No) continue;
+                                        }
 
-                                    Log.Information("Start to inject game, pid = {pid}", pid);
-                                    WindowsDalamudRunner.Inject(new FileInfo(Path.Combine(workingDirectory!, "Dalamud.Injector.exe")),
-                                                                pid, new Dictionary<string, string>(), DalamudLoadMethod.DllInject, startInfo);
+                                        if (Process.GetProcessById(pid).MainModule?.FileName != Path.Combine(App.Settings.GamePath.FullName, "game", "ffxiv_dx11.exe"))
+                                        {
+                                            var result = CustomMessageBox.Show($"即将注入进程{pid},游戏路径与设置中的路径不符,是否注入?", "自动注入", MessageBoxButton.YesNo);
+                                            if (result == MessageBoxResult.No) continue;
+                                        }
+
+                                        Log.Information("Start to inject game, pid = {pid}", pid);
+                                        WindowsDalamudRunner.Inject(new FileInfo(Path.Combine(workingDirectory!, "Dalamud.Injector.exe")),
+                                                                    pid, new Dictionary<string, string>(), DalamudLoadMethod.DllInject, startInfo);
+                                    }
                                 }
-                            }
 
-                            oldPidList = newPidList;
+                                oldPidList = newPidList;
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Log.Error(e, "Inject Error:");
+                            CustomMessageBox.Show(e is Win32Exception ? $"注入失败，权限不足，请使用管理员运行XIVLauncherCN.\n {e}" : $"注入失败.\n {e}", "注入失败");
+                            Environment.Exit(0);
                         }
                     }
                 });
