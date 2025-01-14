@@ -80,6 +80,8 @@ namespace XIVLauncher.Common.Game
         {
             using (var client = new WebClient())
             {
+                client.Headers.Add("X-Machine-Token", SdoUtils.GetDeviceId());
+                Console.WriteLine($"Downloading integrity check for {gameVersion} " + INTEGRITY_CHECK_BASE_URL + gameVersion + ".json");
                 return JsonSerializer.Deserialize<IntegrityCheckResult>(
                     client.DownloadString(INTEGRITY_CHECK_BASE_URL + gameVersion + ".json"));
             }
