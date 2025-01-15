@@ -19,5 +19,6 @@ namespace XIVLauncher.Common.Dalamud
         public static string ClientLanguage(int language) => $"--dalamud-client-language={language}";
         public static string DelayInitialize(int delay) => $"--dalamud-delay-initialize={delay}";
         public static string TsPackB64(string data) => $"--dalamud-tspack-b64={data}";
+        public static string LauncherDirectory(string path) => $"--launcher-directory=\"{path}\"";
     }
 }

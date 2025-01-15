@@ -42,6 +42,7 @@ public class WindowsDalamudRunner : IDalamudRunner
             DalamudInjectorArgs.ClientLanguage((int)dalamudStartInfo.Language),
             DalamudInjectorArgs.DelayInitialize(dalamudStartInfo.DelayInitializeMs),
             DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(dalamudStartInfo.TroubleshootingPackData))),
+            DalamudInjectorArgs.LauncherDirectory(dalamudStartInfo.LauncherDirectory)
         };
 
         if (inheritableCurrentProcess != null)

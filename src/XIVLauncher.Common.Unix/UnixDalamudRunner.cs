@@ -56,6 +56,7 @@ public class UnixDalamudRunner : IDalamudRunner
             DalamudInjectorArgs.ClientLanguage((int)startInfo.Language),
             DalamudInjectorArgs.DelayInitialize(startInfo.DelayInitializeMs),
             DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData))),
+            DalamudInjectorArgs.LauncherDirectory(startInfo.LauncherDirectory)
         };
 
         if (loadMethod == DalamudLoadMethod.ACLonly)
