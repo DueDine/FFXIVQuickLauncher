@@ -348,7 +348,7 @@ namespace XIVLauncher.Windows.ViewModel
             }
 
             loginResult.Area = Area;
-            Log.Verbose("[LR] {State} {NumPatches} {Playable}",
+            Log.Information("[LR] {State} {NumPatches} {Playable}",
                         loginResult.State,
                         loginResult.PendingPatches?.Length,
                         loginResult.OauthLogin?.Playable);
