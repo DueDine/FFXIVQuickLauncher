@@ -16,5 +16,6 @@ namespace XIVLauncher.Common.Dalamud
 
         public string GameVersion;
         public string TroubleshootingPackData;
+        public string LauncherDirectory = Environment.CurrentDirectory;
     }
 }
