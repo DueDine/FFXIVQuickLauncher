@@ -373,21 +373,22 @@ namespace XIVLauncher
             catch (Exception ex)
             {
                 Log.Error(ex, "Update failed");
-                var newsData = await GetErrorNews().ConfigureAwait(false);
 
-                if (newsData != null && !string.IsNullOrEmpty(newsData.Message))
+                if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
                 {
-                    CustomMessageBox.Show(newsData.Message,
-                        "XIVLauncher",
-                        MessageBoxButton.OK,
-                        newsData.IsError ? MessageBoxImage.Error : MessageBoxImage.Asterisk, showOfficialLauncher: true);
+                    {
+                        CustomMessageBox.Show("错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}.\n你的IP可能被WAF封禁, 请前往频道进行上报." + Environment.NewLine + Loc.Localize("updatefailureerror", "XIVLauncher failed to check for updates. This may be caused by internet connectivity issues. Wait a few minutes and try again.\nDisable your VPN, if you have one. You may also have to exclude XIVLauncher from your antivirus.\nIf this continues to fail after several minutes, please check out the FAQ."),
+                                              "XIVLauncherCN",
+                                              MessageBoxButton.OK,
+                                              MessageBoxImage.Error, showOfficialLauncher: true);
+                    }
                 }
                 else
                 {
-                    CustomMessageBox.Show(Loc.Localize("updatefailureerror", "XIVLauncher failed to check for updates. This may be caused by internet connectivity issues. Wait a few minutes and try again.\nDisable your VPN, if you have one. You may also have to exclude XIVLauncher from your antivirus.\nIf this continues to fail after several minutes, please check out the FAQ."),
-                        "XIVLauncher",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error, showOfficialLauncher: true);
+                    CustomMessageBox.Show("错误: " + ex.Message + Environment.NewLine + Loc.Localize("updatefailureerror", "XIVLauncher failed to check for updates. This may be caused by internet connectivity issues. Wait a few minutes and try again.\nDisable your VPN, if you have one. You may also have to exclude XIVLauncher from your antivirus.\nIf this continues to fail after several minutes, please check out the FAQ."),
+                                          "XIVLauncherCN",
+                                          MessageBoxButton.OK,
+                                          MessageBoxImage.Error, showOfficialLauncher: true);
                 }
 
                 Environment.Exit(1);

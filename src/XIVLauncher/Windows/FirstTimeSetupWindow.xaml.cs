@@ -96,7 +96,7 @@ namespace XIVLauncher.Windows
 
                 if (!GameHelpers.IsValidGamePath(GamePathEntry.Text))
                 {
-                    if (CustomMessageBox.Show(Loc.Localize("GamePathInvalidConfirm", "The folder you selected has no installation of the game.\nXIVLauncher will install the game the first time you log in.\nContinue?"), "XIVLauncher",
+                    if (CustomMessageBox.Show(Loc.Localize("GamePathInvalidConfirm", "The folder you selected has no installation of the game.\nXIVLauncher will install the game the first time you log in.\nContinue?"), "XIVLauncherCN",
                             MessageBoxButton.YesNo, MessageBoxImage.Information, parentWindow: this) != MessageBoxResult.Yes)
                     {
                         return;
@@ -114,7 +114,7 @@ namespace XIVLauncher.Windows
 
                 if (GamePathEntry.Text.StartsWith("C"))
                 {
-                    if (CustomMessageBox.Show("你选择的游戏路径位于C盘。\nXIVLauncher将会无法正常登陆，请将游戏移出C盘或者使用管理员启动XIVLauncher。", "XIVLauncher",
+                    if (CustomMessageBox.Show("你选择的游戏路径位于C盘。\nXIVLauncher将会无法正常登陆，请将游戏移出C盘或者使用管理员启动XIVLauncher。", "XIVLauncherCN",
                         MessageBoxButton.YesNo, MessageBoxImage.Warning, parentWindow: this) != MessageBoxResult.Yes)
                     {
                         return;

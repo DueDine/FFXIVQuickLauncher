@@ -33,7 +33,7 @@ namespace XIVLauncher.Game
 
                 foreach (var compatEntry in compatEntries)
                 {
-                    if ((compatEntry.Contains("ffxiv_dx11") || compatEntry.Contains("XIVLauncher")) && ((string)compatFlagKey.GetValue(compatEntry, string.Empty)).Contains("RUNASADMIN"))
+                    if ((compatEntry.Contains("ffxiv_dx11") || compatEntry.Contains("XIVLauncherCN")) && ((string)compatFlagKey.GetValue(compatEntry, string.Empty)).Contains("RUNASADMIN"))
                         entriesToFix.Push(compatEntry);
                 }
 
@@ -42,7 +42,7 @@ namespace XIVLauncher.Game
                     var result = CustomMessageBox.Show(
                         Loc.Localize("AdminCheck",
                             "XIVLauncher and/or the game are set to run as administrator.\nThis can cause various issues, including addons failing to launch and hotkey applications failing to respond.\n\nDo you want to fix this issue automatically?"),
-                        "XIVLauncher", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation, parentWindow: parentWindow);
+                        "XIVLauncherCN", MessageBoxButton.OKCancel, MessageBoxImage.Exclamation, parentWindow: parentWindow);
 
                     if (result != MessageBoxResult.OK)
                         return;

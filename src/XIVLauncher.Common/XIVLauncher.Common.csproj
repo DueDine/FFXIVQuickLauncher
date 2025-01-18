@@ -59,5 +59,6 @@
         <PackageReference Include="System.Memory" Version="4.5.5" />
         <PackageReference Include="System.Security.Principal.Windows" Version="5.0.0" />
         <PackageReference Include="System.Text.Json" Version="8.0.5" />
+        <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
     </ItemGroup>
 </Project>

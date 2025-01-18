@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Product>XIVLauncher Patcher</Product>
     <AssemblyTitle>XIVLauncher Patcher</AssemblyTitle>
@@ -34,6 +34,7 @@
     <PackageReference Include="SharedMemory" Version="2.3.2" />
     <PackageReference Include="System.CommandLine" Version="2.0.0-beta4.22272.1" />
     <PackageReference Include="System.Threading.Channels" Version="8.0.0" />
+    <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />

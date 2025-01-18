@@ -1,9 +1,9 @@
-<Project Sdk="Microsoft.NET.Sdk.WindowsDesktop">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <Product>XIVLauncherCN</Product>
-    <AssemblyTitle>XIVLauncher</AssemblyTitle>
-    <Description>Custom launcher for the most critically acclaimed MMO.</Description>
-    <VersionPrefix>6.4.3-5</VersionPrefix>
+    <AssemblyTitle>XIVLauncherCN</AssemblyTitle>
+    <Description>Custom launcher for the most critically acclaimed MMO's CN server.</Description>
+    <VersionPrefix>6.4.3-6</VersionPrefix>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -92,20 +92,13 @@
     <PackageReference Include="System.Drawing.Common" Version="8.0.10" />
     <PackageReference Include="System.Text.Encodings.Web" Version="6.0.0" />
     <PackageReference Include="Velopack" Version="0.0.869" />
+    <PackageReference Update="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\XIVLauncher.Common.Windows\XIVLauncher.Common.Windows.csproj" />
     <ProjectReference Include="..\XIVLauncher.Common\XIVLauncher.Common.csproj" />
     <ProjectReference Include="..\XIVLauncher.PatchInstaller\XIVLauncher.PatchInstaller.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="System.Data.Linq" />
-    <Reference Include="System.IO.Compression" />
-    <Reference Include="System.Net.Http" />
-    <Reference Include="System.Net.Http.WebRequest" />
-    <Reference Include="System.Web" />
   </ItemGroup>
 
   <ItemGroup>

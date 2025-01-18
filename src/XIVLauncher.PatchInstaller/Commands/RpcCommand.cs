@@ -68,7 +68,7 @@ public class RpcCommand
         }
         catch (Exception ex)
         {
-            MessageBox.Show("Patcher init failed.\n\n" + ex, "XIVLauncher", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show("Patcher init failed.\n\n" + ex, "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error);
             throw;
         }
     }

@@ -286,7 +286,7 @@ namespace XIVLauncher.Windows
         public class Builder
         {
             internal string Text;
-            internal string Caption = "XIVLauncher";
+            internal string Caption = "XIVLauncherCN";
             internal string Description;
             internal MessageBoxButton Buttons = MessageBoxButton.OK;
             internal MessageBoxResult DefaultResult = MessageBoxResult.None;  // On enter
