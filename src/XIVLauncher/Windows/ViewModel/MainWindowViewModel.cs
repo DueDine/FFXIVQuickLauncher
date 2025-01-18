@@ -1222,6 +1222,11 @@ namespace XIVLauncher.Windows.ViewModel
                     var ensurementErrorMessage = Loc.Localize("DalamudEnsurementError",
                                                               "Could not download necessary data files to use Dalamud and plugins.\nThis could be a problem with your internet connection, or might be caused by your antivirus application blocking necessary files. The game will start, but you will not be able to use plugins.\n\nPlease check our FAQ for more information.");
 
+                    if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+                        ensurementErrorMessage = "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}.\n你的IP可能被WAF封禁, 请前往频道进行上报." + Environment.NewLine + ensurementErrorMessage;
+                    else
+                        ensurementErrorMessage = "错误: " + ex.Message + Environment.NewLine + ensurementErrorMessage;
+
                     CustomMessageBox.Builder
                                     .NewFrom(ensurementErrorMessage)
                                     .WithImage(MessageBoxImage.Warning)
@@ -1236,16 +1241,16 @@ namespace XIVLauncher.Windows.ViewModel
 
             // We won't do any sanity checks here anymore, since that should be handled in StartLogin
             var launched = this.Launcher.LaunchGameSdo(gameRunner,
-                    loginResult.OauthLogin.SessionId,
-                    loginResult.OauthLogin.SndaId,
-                    Area.Areaid,
-                    Area.AreaLobby,
-                    Area.AreaGm,
-                    Area.AreaConfigUpload,
-                    App.Settings.AdditionalLaunchArgs,
-                    App.Settings.GamePath,
-                    App.Settings.EncryptArguments.GetValueOrDefault(false),
-                    App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware));
+                                                       loginResult.OauthLogin.SessionId,
+                                                       loginResult.OauthLogin.SndaId,
+                                                       Area.Areaid,
+                                                       Area.AreaLobby,
+                                                       Area.AreaGm,
+                                                       Area.AreaConfigUpload,
+                                                       App.Settings.AdditionalLaunchArgs,
+                                                       App.Settings.GamePath,
+                                                       App.Settings.EncryptArguments.GetValueOrDefault(false),
+                                                       App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware));
             // var launched = this.Launcher.LaunchGame(gameRunner,
             //     loginResult.UniqueId,
             //     loginResult.OauthLogin.Region,
@@ -1282,7 +1287,7 @@ namespace XIVLauncher.Windows.ViewModel
                                 .NewFrom(ex, "Addons")
                                 .WithAppendText("\n\n")
                                 .WithAppendText(Loc.Localize("AddonLoadError",
-                                    "This could be caused by your antivirus, please check its logs and add any needed exclusions."))
+                                                             "This could be caused by your antivirus, please check its logs and add any needed exclusions."))
                                 .WithParentWindow(_window)
                                 .Show();
 

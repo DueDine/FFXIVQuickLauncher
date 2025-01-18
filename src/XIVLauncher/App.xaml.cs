@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -446,9 +447,21 @@ namespace XIVLauncher
                 catch (Exception ex)
                 {
                     Log.Error(ex, "Could not dispatch update check");
-                    MessageBox.Show(
-                        "XIVLauncher could not check for updates. Please check your internet connection or try again.\n\n" + ex,
-                        "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error);
+
+                    if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+                    {
+                        MessageBox.Show(
+                            "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}.\n你的IP可能被WAF封禁, 请前往频道进行上报." + Environment.NewLine +
+                            "XIVLauncher could not check for updates. Please check your internet connection or try again.\n\n" + ex,
+                            "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+                    else
+                    {
+                        MessageBox.Show("错误: " + ex.Message + Environment.NewLine +
+                                        "XIVLauncher could not check for updates. Please check your internet connection or try again.\n\n" + ex,
+                                        "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    }
+
                     Environment.Exit(0);
                     return;
                 }
