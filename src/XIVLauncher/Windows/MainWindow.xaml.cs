@@ -250,13 +250,8 @@ namespace XIVLauncher.Windows
                         }
 
                         App.DalamudUpdater.CloseOverlay();
-                        var workingDirectory = App.DalamudUpdater.Runner.Directory?.FullName;
-                        startInfo.WorkingDirectory = workingDirectory;
-                        startInfo.AssetDirectory = App.DalamudUpdater.AssetDirectory.FullName;
-                        startInfo.TroubleshootingPackData = Troubleshooting.GetTroubleshootingJson();
 
                         var newPidList = GetGameProcess();
-
                         var newHash = string.Join(", ", newPidList).GetHashCode();
                         var oldHash = string.Join(", ", oldPidList).GetHashCode();
 
@@ -284,6 +279,10 @@ namespace XIVLauncher.Windows
                                         }
 
                                         Log.Information("Start to inject game, pid = {pid}", pid);
+                                        var workingDirectory = App.DalamudUpdater.Runner.Directory?.FullName;
+                                        startInfo.WorkingDirectory = workingDirectory;
+                                        startInfo.AssetDirectory = App.DalamudUpdater.AssetDirectory.FullName;
+                                        startInfo.TroubleshootingPackData = Troubleshooting.GetTroubleshootingJson();
                                         WindowsDalamudRunner.Inject(new FileInfo(Path.Combine(workingDirectory!, "Dalamud.Injector.exe")),
                                                                     pid, new Dictionary<string, string>(), DalamudLoadMethod.DllInject, startInfo);
                                     }
