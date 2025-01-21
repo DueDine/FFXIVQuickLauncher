@@ -9,6 +9,7 @@ using CheapLoc;
 using Newtonsoft.Json;
 using Serilog;
 using Velopack;
+using XIVLauncher.Common.Util;
 using XIVLauncher.Windows;
 
 #nullable enable
@@ -184,6 +185,7 @@ namespace XIVLauncher
                 {
                     Timeout = TimeSpan.FromSeconds(10),
                 };
+                client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
 
                 var text = await client.GetStringAsync(NEWS_URL).ConfigureAwait(false);
                 newsData = JsonConvert.DeserializeObject<ErrorNewsData>(text);

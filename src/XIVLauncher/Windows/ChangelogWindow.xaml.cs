@@ -8,6 +8,7 @@ using Microsoft.Win32;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common;
+using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 using HttpUtility = System.Web.HttpUtility;
@@ -98,6 +99,7 @@ namespace XIVLauncher.Windows
                 try
                 {
                     using var client = new HttpClient();
+                    client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
                     var response = JsonConvert.DeserializeObject<ReleaseMeta>(await client.GetStringAsync(META_URL));
 
                     Dispatcher.Invoke(() => this.ChangeLogText.Text = _prerelease ? response.PrereleaseVersion.Changelog : response.ReleaseVersion.Changelog);

@@ -149,6 +149,7 @@ namespace XIVLauncher.Common.Dalamud
             {
                 NoCache = true,
             };
+            client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
 
             var versionInfoJsonRelease = await client.GetStringAsync(DalamudLauncher.REMOTE_BASE + $"release&bucket={this.RolloutBucket}").ConfigureAwait(false);
 
@@ -491,6 +492,8 @@ namespace XIVLauncher.Common.Dalamud
                 try
                 {
                     using var client = new HttpClient();
+                    client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
+
                     runtimeHashes = await client.GetStringAsync($"https://aonyx.ffxiv.wang/Dalamud/Release/Runtime/Hashes/{version}").ConfigureAwait(false);
                 }
                 catch (Exception ex)

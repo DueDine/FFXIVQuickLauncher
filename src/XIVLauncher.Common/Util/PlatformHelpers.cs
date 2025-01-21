@@ -188,4 +188,18 @@ public static class PlatformHelpers
             return drive.AvailableFreeSpace;
         }
 #endif
+
+    public static string GetVersion()
+    {
+        if (GetPlatform() != Platform.Win32)
+        {
+            return $"XIVLauncher running on {GetPlatform()}";
+        }
+        else
+        {
+            var file = Process.GetCurrentProcess().MainModule!.FileName;
+            FileVersionInfo fileVersionInfo = FileVersionInfo.GetVersionInfo(file);
+            return $"XIVLauncherCN " + fileVersionInfo.ProductVersion.Substring(0, fileVersionInfo.ProductVersion.IndexOf('+') + 10);
+        }
+    }
 }
