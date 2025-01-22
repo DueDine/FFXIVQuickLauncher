@@ -22,7 +22,7 @@ public static class GameHelpers
         if (string.IsNullOrEmpty(path))
             return false;
 
-        return Directory.Exists(Path.Combine(path, "game")) && Directory.Exists(Path.Combine(path, "boot")) || Directory.Exists(Path.Combine(path, "sdo"));
+        return Directory.Exists(Path.Combine(path, "game")) && Directory.Exists(Path.Combine(path, "sdo"));
     }
 
     public static bool CanMightNotBeInternationalClient(string path) 
