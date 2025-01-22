@@ -267,7 +267,6 @@ namespace XIVLauncher.Windows
 
                                         if (first)
                                         {
-                                            first = false;
                                             var result = CustomMessageBox.Show($"检测到已经存在游戏进程{pid},即将自动注入,是否要注入?", "自动注入", MessageBoxButton.YesNo);
                                             if (result == MessageBoxResult.No) continue;
                                         }
@@ -297,6 +296,8 @@ namespace XIVLauncher.Windows
                             CustomMessageBox.Show(e is Win32Exception ? $"注入失败，权限不足，请使用管理员运行XIVLauncherCN.\n {e}" : $"注入失败.\n {e}", "注入失败");
                             Environment.Exit(0);
                         }
+
+                        first = false;
                     }
                 });
             }
