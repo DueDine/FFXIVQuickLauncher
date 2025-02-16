@@ -154,6 +154,7 @@ public class CompatibilityTools
     private async Task DownloadTool(DirectoryInfo tempPath)
     {
         using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
         var tempFilePath = Path.Combine(tempPath.FullName, $"{Guid.NewGuid()}");
 
         var wineUrl = IsSteamDeckHardware ? SD_WINE_XIV_RELEASE_URL : WINE_XIV_RELEASE_URL;

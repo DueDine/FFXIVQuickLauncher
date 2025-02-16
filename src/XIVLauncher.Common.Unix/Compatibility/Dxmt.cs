@@ -68,6 +68,7 @@ public static class Dxmt
     private static async Task DownloadDxmt(DirectoryInfo installDirectory)
     {
         using var client = new HttpClient();
+        client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
         var tempPath = PlatformHelpers.GetTempFileName();
 
         File.WriteAllBytes(tempPath, await client.GetByteArrayAsync(DXMT_DOWNLOAD));
