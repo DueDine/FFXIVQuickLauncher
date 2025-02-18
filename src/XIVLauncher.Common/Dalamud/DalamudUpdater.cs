@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Cryptography;
+using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Serilog;
@@ -163,6 +164,23 @@ namespace XIVLauncher.Common.Dalamud
 
                 if (versionInfoJsonStaging.StatusCode != HttpStatusCode.BadRequest)
                     versionInfoStaging = JsonConvert.DeserializeObject<DalamudVersionInfo>(await versionInfoJsonStaging.Content.ReadAsStringAsync().ConfigureAwait(false));
+
+                // 定义要发送的数据
+                var data = new { code = settings.DalamudBetaKey };
+
+                // 将数据序列化为 JSON 字符串
+                string jsonData = JsonConvert.SerializeObject(data);
+
+                var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
+
+                var respond = await client.PostAsync("https://aonyx.ffxiv.wang/Dalamud/Check/StgCode", content).ConfigureAwait(false);
+
+                if (!respond.IsSuccessStatusCode)
+                {
+                    versionInfoStaging = null;
+                    Log.Error("[GetVersionInfo] BetaKey is not correct.");
+                }
+                else versionInfoStaging.Key = settings.DalamudBetaKey;
             }
 
             return (versionInfoRelease, versionInfoStaging);
@@ -346,7 +364,7 @@ namespace XIVLauncher.Common.Dalamud
 
                     if (onlineHash != hashHash)
                     {
-                        Log.Error("[UPDATE] hashes.json Hash Check Failed");
+                        Log.Error($"[UPDATE] hashes.json Hash Check Failed, local {hashHash}, remote {onlineHash}");
                         return false;
                     }
                 }

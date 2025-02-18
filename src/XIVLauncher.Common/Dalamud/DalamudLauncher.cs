@@ -61,7 +61,7 @@ namespace XIVLauncher.Common.Dalamud
                 if (this.updater.State == DalamudUpdater.DownloadState.NoIntegrity)
                 {
                     this.updater.CloseOverlay();
-                    throw new DalamudRunnerException("Updater returned no integrity.", this.updater.EnsurementException);
+                    throw new DalamudRunnerException("Updater returned no integrity.", this.updater.EnsurementException?.InnerException);
                 }
 
                 Thread.Yield();
