@@ -344,6 +344,9 @@ namespace XIVLauncher.Windows.ViewModel
                 {
                     switch (loginType)
                     {
+                        case LoginType.SdoStatic:
+                            password = savedAccount.Password;
+                            break;
                         case LoginType.SdoSlide:
                         //case LoginType.SdoStatic:
                         case LoginType.WeGameToken:
