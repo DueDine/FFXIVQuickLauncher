@@ -13,6 +13,7 @@ using System.Windows.Input;
 using System.Windows.Media.Imaging;
 using Castle.Core.Internal;
 using CheapLoc;
+using MaterialDesignThemes.Wpf;
 using Serilog;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
@@ -20,6 +21,7 @@ using XIVLauncher.Common.Dalamud;
 using XIVLauncher.Common.Game;
 using XIVLauncher.Common.Game.Patch.Acquisition;
 using XIVLauncher.Common.Windows;
+using XIVLauncher.Game;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 using XIVLauncher.Xaml;
@@ -62,6 +64,7 @@ namespace XIVLauncher.Windows
             InitializeComponent();
 
             this.DataContext = new MainWindowViewModel(this);
+            _accountManager = Model.AccountManager;
             _launcher = Model.Launcher;
 
             Closed += Model.OnWindowClosed;
@@ -83,6 +86,8 @@ namespace XIVLauncher.Windows
 
             Model.ReloadHeadlines += () => Task.Run(SetupHeadlines);
 
+            LoginTypeSelection.ItemsSource = GuiLoginType.Get(App.Settings.ShowWeGameTokenLogin.GetValueOrDefault(false));
+            LoginTypeSelection.SelectedValue = LoginType.SdoSlide;
             NewsListView.ItemsSource = new List<News>
             {
                 new News
@@ -112,11 +117,6 @@ namespace XIVLauncher.Windows
             if (EnvironmentSettings.IsWine)
                 Title += " - Wine on Linux";
 
-            if (App.Settings.LauncherLanguage == LauncherLanguage.Russian)
-            {
-                AccountSwitcherButton.Background = App.UaBrush;
-                AccountSwitcherButton.BorderBrush = App.UaBrush;
-            }
         }
 
         private async Task SetupServers()
@@ -135,7 +135,7 @@ namespace XIVLauncher.Windows
                 Dispatcher.BeginInvoke(new Action(async () =>
                 {
                     ServerSelection.ItemsSource = _sdoAreas;
-                    ServerSelection.SelectedIndex = App.Settings.SelectedServer.GetValueOrDefault(0);
+                    ServerSelection.SelectedIndex = 0;
                 }));
             }
         }
@@ -218,109 +218,6 @@ namespace XIVLauncher.Windows
             }
         }
 
-        private void SetupInjector()
-        {
-            try
-            {
-                var startInfo = new DalamudStartInfo
-                {
-                    ConfigurationPath = DalamudSettings.GetConfigPath(new DirectoryInfo(Paths.RoamingPath)),
-                    LoggingPath = Paths.RoamingPath,
-                    PluginDirectory = Path.Combine(Paths.RoamingPath, "installedPlugins"),
-                    Language = ClientLanguage.ChineseSimplified,
-                    DelayInitializeMs = (int)App.Settings.DalamudInjectionDelayMs,
-                    GameVersion = Repository.Ffxiv.GetVer(App.Settings.GamePath)
-                };
-
-                Task.Run(() =>
-                {
-                    var first = true;
-
-                    while (true)
-                    {
-                        Thread.Sleep(1000);
-
-                        if (!App.Settings.EnableInjector) continue;
-                        if (App.DalamudUpdater?.Runner is null) continue;
-
-                        if (App.DalamudUpdater.State is not DalamudUpdater.DownloadState.Done)
-                        {
-                            App.DalamudUpdater.ShowOverlay();
-                            continue;
-                        }
-
-                        App.DalamudUpdater.CloseOverlay();
-
-                        var newPidList = GetGameProcess();
-                        var newHash = string.Join(", ", newPidList).GetHashCode();
-                        var oldHash = string.Join(", ", oldPidList).GetHashCode();
-
-                        try
-                        {
-                            if (oldHash != newHash)
-                            {
-                                if (newPidList.Except(oldPidList).Any())
-                                {
-                                    foreach (var pid in newPidList.Except(oldPidList))
-                                    {
-                                        Log.Information($"Detected new game pid: {pid}");
-
-                                        if (first)
-                                        {
-                                            var result = CustomMessageBox.Show($"检测到已经存在游戏进程{pid},即将自动注入,是否要注入?", "自动注入", MessageBoxButton.YesNo);
-                                            if (result == MessageBoxResult.No) continue;
-                                        }
-
-                                        if (Process.GetProcessById(pid).MainModule?.FileName != Path.Combine(App.Settings.GamePath.FullName, "game", "ffxiv_dx11.exe"))
-                                        {
-                                            var result = CustomMessageBox.Show($"即将注入进程{pid},游戏路径与设置中的路径不符,是否注入?", "自动注入", MessageBoxButton.YesNo);
-                                            if (result == MessageBoxResult.No) continue;
-                                        }
-
-                                        Log.Information("Start to inject game, pid = {pid}", pid);
-                                        var workingDirectory = App.DalamudUpdater.Runner.Directory?.FullName;
-                                        startInfo.WorkingDirectory = workingDirectory;
-                                        startInfo.AssetDirectory = App.DalamudUpdater.AssetDirectory.FullName;
-                                        startInfo.TroubleshootingPackData = Troubleshooting.GetTroubleshootingJson();
-                                        WindowsDalamudRunner.Inject(new FileInfo(Path.Combine(workingDirectory!, "Dalamud.Injector.exe")),
-                                                                    pid, new Dictionary<string, string>(), DalamudLoadMethod.DllInject, startInfo);
-                                    }
-                                }
-
-                                oldPidList = newPidList;
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            Log.Error(e, "Inject Error:");
-                            CustomMessageBox.Show(e is Win32Exception ? $"注入失败，权限不足，请使用管理员运行XIVLauncherCN.\n {e}" : $"注入失败.\n {e}", "注入失败");
-                            Environment.Exit(0);
-                        }
-
-                        first = false;
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                Log.Error(ex, "Setup Injector Error");
-                throw;
-            }
-        }
-
-        private static List<int> GetGameProcess()
-        {
-            return Process.GetProcesses().Where(process =>
-            {
-                if (process.ProcessName == "ffxiv_dx11")
-                {
-                    return !process.MainWindowTitle.Contains("FINAL FANTASY XIV"); //非国际服
-                }
-
-                return false;
-            }).ToList().ConvertAll(process => process.Id).ToList();
-        }
-
         private const int CURRENT_VERSION_LEVEL = 2;
 
         private void SetDefaults()
@@ -348,7 +245,7 @@ namespace XIVLauncher.Windows
 
             App.Settings.IsFt = false;
             App.Settings.UniqueIdCacheEnabled = false;
-            App.Settings.EncryptArguments = false;
+            //App.Settings.EncryptArguments = false;
             App.Settings.EnableBeta ??= false;
 
             App.Settings.AutoStartSteam ??= false;
@@ -414,11 +311,11 @@ namespace XIVLauncher.Windows
             this.SetDefaults();
 
             Model.IsFastLogin = App.Settings.FastLogin;
-            LoginPassword.IsEnabled = LoginPassword.IsVisible;
-            Model.EnableInjector = App.Settings.EnableInjector;
+            //LoginPassword.IsEnabled = LoginPassword.IsVisible;
+            //Model.EnableInjector = App.Settings.EnableInjector;
 
-            _accountManager = new AccountManager(App.Settings);
-            if (this._accountManager.CurrentAccount != null && !_accountManager.CurrentAccount.Password.IsNullOrEmpty()) ShowPassword_OnClick(null, null);
+            //_accountManager = new AccountManager(App.Settings);
+            //if (this._accountManager.CurrentAccount != null && !_accountManager.CurrentAccount.Password.IsNullOrEmpty()) ShowPassword_OnClick(null, null);
 
             var savedAccount = _accountManager.CurrentAccount;
 
@@ -437,16 +334,34 @@ namespace XIVLauncher.Windows
             if (App.Settings.AutologinEnabled && savedAccount != null && !Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
             {
                 Log.Information("Engaging Autologin...");
-                Model.TryLogin(savedAccount.UserName, savedAccount.Password,
-                    savedAccount.UseOtp,
-                    savedAccount.UseSteamServiceAccount, true, MainWindowViewModel.AfterLoginAction.Start);
-
+                if (savedAccount.AccountType == XivAccountType.WeGameSid)
+                {
+                    Model.TryLogin(
+                        LoginType.WeGameSid,
+                        savedAccount.LoginAccount,
+                        savedAccount.TestSID,
+                        Model.IsFastLogin,
+                        Model.IsReadWegameInfo,
+                        MainWindowViewModel.AfterLoginAction.Start
+                    );
+                }
+                else
+                {
+                    Model.TryLogin(
+                        LoginType.AutoLoginSession,
+                        savedAccount.LoginAccount,
+                        savedAccount.AutoLoginSessionKey,
+                        Model.IsFastLogin,
+                        Model.IsReadWegameInfo,
+                        MainWindowViewModel.AfterLoginAction.Start
+                        );
+                }
                 return;
             }
             else if (Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || bool.Parse(Environment.GetEnvironmentVariable("XL_NOAUTOLOGIN") ?? "false"))
             {
                 App.Settings.AutologinEnabled = false;
-                AutoLoginCheckBox.IsChecked = false;
+                //AutoLoginCheckBox.IsChecked = false;
             }
 
             if (App.Settings.GamePath?.Exists != true)
@@ -463,8 +378,8 @@ namespace XIVLauncher.Windows
 
                 SettingsControl.ReloadSettings();
             }
-
             Task.Run(async () =>
+
             {
                 await SetupServers();
                 Dispatcher.BeginInvoke(new Action(() =>
@@ -476,7 +391,6 @@ namespace XIVLauncher.Windows
                 Troubleshooting.LogTroubleshooting();
             });
 
-            this.Dispatcher.InvokeAsync(this.SetupInjector);
 
             Log.Information("MainWindow initialized.");
 
@@ -613,7 +527,7 @@ namespace XIVLauncher.Windows
                 {
                     QuitMaintenanceQueueButton_OnClick(null, null);
 
-                    Model.TryLogin(Model.Username, LoginPassword.Password, Model.IsOtp, Model.IsSteam, false, MainWindowViewModel.AfterLoginAction.Start);
+                    Model.TryLogin(Model.GuiLoginType.LoginType, Model.Username, LoginPassword.Password, Model.IsFastLogin, Model.IsReadWegameInfo, MainWindowViewModel.AfterLoginAction.Start);
                 });
 
                 Console.Beep(523, 150);
@@ -639,7 +553,8 @@ namespace XIVLauncher.Windows
         private void QuitMaintenanceQueueButton_OnClick(object sender, RoutedEventArgs e)
         {
             //_maintenanceQueueTimer.Stop();
-            Model.EnableInjector = false;
+            //Model.EnableInjector = false;
+            Model.IsLoadingDialogOpen = false;
         }
 
         private void Card_KeyDown(object sender, KeyEventArgs e)
@@ -682,13 +597,22 @@ namespace XIVLauncher.Windows
         private void SwitchAccount(XivAccount account, bool saveAsCurrent)
         {
             Model.Username = account.UserName;
-            Model.IsOtp = account.UseOtp;
-            Model.IsSteam = account.UseSteamServiceAccount;
+            //Model.IsOtp = account.UseOtp;
+            //Model.IsSteam = account.UseSteamServiceAccount;
             Model.IsAutoLogin = App.Settings.AutologinEnabled;
-            Model.Area = _sdoAreas.Where(x => x.Areaid == account.AreaID).FirstOrDefault();
-
-            if (account.SavePassword)
-                LoginPassword.Password = account.Password;
+            Model.Area = _sdoAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
+            switch (account.AccountType)
+            {
+                case XivAccountType.Sdo:
+                    LoginTypeSelection.SelectedValue = LoginType.SdoSlide;
+                    break;
+                case XivAccountType.WeGame:
+                    LoginTypeSelection.SelectedValue = LoginType.WeGameToken;
+                    break;
+                case XivAccountType.WeGameSid:
+                    LoginTypeSelection.SelectedValue = LoginType.WeGameSid;
+                    break;
+            }
 
             if (saveAsCurrent)
             {
@@ -711,7 +635,8 @@ namespace XIVLauncher.Windows
                     Playable = true,
                     Region = 0,
                     SessionId = "0",
-                    TermsAccepted = true
+                    TermsAccepted = true,
+                    SndaId = "114514",
                 },
                 State = Launcher.LoginState.Ok,
                 UniqueId = "0"
@@ -777,9 +702,51 @@ namespace XIVLauncher.Windows
 
         private void ServerSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (this.DataContext != null) 
+            if (this.DataContext != null)
                 ((MainWindowViewModel)this.DataContext).Area = (SdoArea)((ComboBox)sender).SelectedItem;
             App.Settings.SelectedServer = ((ComboBox)sender).SelectedIndex;
+        }
+
+        private void LoginTypeSelection_OnSelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var selectedItem = (GuiLoginType)((ComboBox)sender).SelectedItem;
+            if (this.DataContext != null)
+                ((MainWindowViewModel)this.DataContext).GuiLoginType = selectedItem;
+            App.Settings.SelectedLoginType = selectedItem.LoginType;
+            // Default
+            LoginUsername.Visibility = Visibility.Visible;
+            LoginPassword.Visibility = Visibility.Collapsed;
+
+            FastLoginCheckBox.Visibility = Visibility.Visible;
+            ReadWeGameInfoCheckBox.Visibility = Visibility.Collapsed;
+
+            HintAssist.SetHint(this.LoginUsername, "盛趣账号");
+            HintAssist.SetHint(this.LoginPassword, "密码");
+
+            switch (selectedItem.LoginType)
+            {
+                //Todo: 各种地方的Hint
+                case LoginType.SdoSlide:
+                    break;
+                case LoginType.SdoQrCode:
+                    LoginUsername.Visibility = Visibility.Hidden;
+                    break;
+                case LoginType.SdoStatic:
+                    LoginUsername.Visibility = Visibility.Visible;
+                    LoginPassword.Visibility = Visibility.Visible;
+                    FastLoginCheckBox.Visibility = Visibility.Collapsed;
+                    break;
+                case LoginType.WeGameToken:
+                    LoginPassword.Visibility = Visibility.Visible;
+                    HintAssist.SetHint(this.LoginUsername, "SndaId");
+                    HintAssist.SetHint(this.LoginPassword, "抓包Token");
+                    break;
+                case LoginType.WeGameSid:
+                    FastLoginCheckBox.Visibility = Visibility.Collapsed;
+                    ReadWeGameInfoCheckBox.Visibility = Visibility.Visible;
+                    HintAssist.SetHint(this.LoginUsername, "从Wegame自动获取的账号");
+                    break;
+            }
         }
 
         private void LoginUsername_OnTextChanged(object sender, TextChangedEventArgs e)
@@ -800,28 +767,18 @@ namespace XIVLauncher.Windows
             //}
         }
 
-        private void ShowPassword_OnClick(object sender, RoutedEventArgs e)
+        private void ReadWeGameLoginData_OnClick(object sender, RoutedEventArgs e)
         {
-            if (LoginPassword.Visibility == Visibility.Collapsed)
-            {
-                LoginPassword.Visibility = Visibility.Visible;
-                LoginPassword.IsEnabled = true;
-                LoginPassword.Password = _accountManager.CurrentAccount?.Password;
-            }
-            else
-            {
-                LoginPassword.Visibility = Visibility.Collapsed;
-                LoginPassword.Password = string.Empty;
-                LoginPassword.IsEnabled = false;
-            }
+            CustomMessageBox.Show("自动注入目前已禁用，请在上方选择其他方式登录。", "看看别处");
         }
 
-        private void EnableInjector_OnClick(object sender, RoutedEventArgs e)
+        private void BackToLoginPageButton_OnClick(object sender, RoutedEventArgs e)
         {
-            Model.EnableInjector = true;
-            if (App.DalamudUpdater is not null) App.DalamudUpdater.ShowOverlay();
-            Model.LoadingDialogCancelButtonVisibility = Visibility.Visible;
-            Model.LoadingDialogMessage = "正在使用自动注入模式";
+            Dispatcher.Invoke(() =>
+            {
+                Model.SwitchCard(MainWindowViewModel.LoginCard.MainPage);
+            });
+
         }
     }
 }

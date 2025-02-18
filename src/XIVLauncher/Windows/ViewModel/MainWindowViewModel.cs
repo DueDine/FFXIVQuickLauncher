@@ -11,9 +11,11 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Castle.Core.Internal;
 using CheapLoc;
+using FfxivArgLauncher;
 using Serilog;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
@@ -34,7 +36,7 @@ using XIVLauncher.Xaml;
 
 namespace XIVLauncher.Windows.ViewModel
 {
-    internal class MainWindowViewModel : INotifyPropertyChanged
+    public class MainWindowViewModel : INotifyPropertyChanged
     {
         private readonly Window _window;
 
@@ -45,7 +47,7 @@ namespace XIVLauncher.Windows.ViewModel
 
         public Launcher Launcher { get; private set; }
 
-        public AccountManager AccountManager { get; private set; } = new(App.Settings);
+        public AccountManager AccountManager { get; private set; } = App.AccountManager;
 
         public Action Activate;
         public Action Hide;
@@ -80,7 +82,7 @@ namespace XIVLauncher.Windows.ViewModel
             LoginRepairCommand = new SyncCommand(GetLoginFunc(AfterLoginAction.Repair), () => !IsLoggingIn);
             LoginCancelCommand = new SyncCommand(GetLoginFunc(AfterLoginAction.CancelLogin));
             LoginForceQRCommand = new SyncCommand(GetLoginFunc(AfterLoginAction.ForceQR));
-            
+
             var frontierUrl = Updates.UpdateLease?.FrontierUrl;
 #if DEBUG || RELEASENOUPDATE
             // FALLBACK
@@ -119,7 +121,7 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 if (action == AfterLoginAction.CancelLogin)
                 {
-                    Launcher.CancelLogin();
+                    CancelLogin();
                     return;
                 }
                 if (this.IsLoggingIn)
@@ -161,33 +163,97 @@ namespace XIVLauncher.Windows.ViewModel
                         return;
                 }
 
-                TryLogin(this.Username, this.Password, this.IsOtp, this.IsSteam, false, action);
+                TryLogin(this.GuiLoginType.LoginType, this.Username, this.Password, IsFastLogin, IsReadWegameInfo, action);
             };
         }
 
-        public void TryLogin(string username, string password, bool isOtp, bool isSteam, bool doingAutoLogin, AfterLoginAction action)
+        private async Task<LoginData> ReadWegameInfo(string username, string targetAreaId)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo()
+                {
+                    FileName = "wegame://StartFor=2000340",
+                    UseShellExecute = true,
+                });
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Could not Launch WeGame");
+            }
+
+            var pidList = AppUtil.GetGameProcessIds();
+            var argReader = new RemoteArgReader();
+            await argReader.Start();
+            while (true)
+            {
+                if (loginCts.IsCancellationRequested)
+                {
+                    argReader.Stop(false);
+                    return null;
+                }
+                await Task.Delay(1000);
+                var newPidList = AppUtil.GetGameProcessIds().Except(pidList);
+                this.LoginMessage = $"请使用WeGame启动需要读取的FFXIV";
+#if DEBUG
+                newPidList = AppUtil.GetGameProcessIds();
+#endif
+                if (newPidList.Count() == 0)
+                    continue;
+                var pid = newPidList.First();
+                await argReader.OpenProcess(pid);
+                var data = await argReader.ReadArgs();
+#if DEBUG
+                this.LoginMessage = $"读取成功";
+#endif
+                argReader.Stop(true);
+                return data;
+
+            }
+        }
+
+        public enum LoginCard
+        {
+            Logining = 0,
+            MainPage = 1,
+            ScanQrCode = 2,
+        }
+        public void SwitchCard(LoginCard i)
+        {
+            _window.Dispatcher.Invoke(
+                () =>
+                {
+                    this.CancelLogin();
+                    this.LoginCardTransitionerIndex = (int)i;
+                }
+                );
+        }
+
+        public void TryLogin(LoginType loginType, string username, string password, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
         {
             if (this.IsLoggingIn)
                 return;
-            if (username == null) username = string.Empty;
+            //if (username == null) username = string.Empty;
             if (_window.Dispatcher != Dispatcher.CurrentDispatcher)
             {
-                _window.Dispatcher.Invoke(() => TryLogin(username, password, isOtp, isSteam, doingAutoLogin, action));
+                _window.Dispatcher.Invoke(() => TryLogin(loginType, username, password, doingAutoLogin, readWeGameInfo, action));
                 return;
             }
 
             LoadingDialogCancelButtonVisibility = Visibility.Collapsed;
 
             IsEnabled = false;
-            LoginCardTransitionerIndex = 0;
-
+            //LoginCardTransitionerIndex = 0;
+            var currentCard = (LoginCard)LoginCardTransitionerIndex;
+            this.SwitchCard(loginType == LoginType.SdoQrCode ? LoginCard.ScanQrCode : LoginCard.Logining);
+            this.loginCts = new CancellationTokenSource();
             IsLoggingIn = true;
 
             Task.Run(() =>
             {
                 try
                 {
-                    Login(username, password, isOtp, isSteam, doingAutoLogin, action).Wait();
+                    Login(loginType, username, password, doingAutoLogin, readWeGameInfo, action).Wait();
                 }
                 catch (Exception ex)
                 {
@@ -196,15 +262,16 @@ namespace XIVLauncher.Windows.ViewModel
                                     .Show();
                 }
 
+                this.SwitchCard(currentCard);
                 IsLoggingIn = false;
                 IsEnabled = true;
-                LoginCardTransitionerIndex = 1;
+
                 ReloadHeadlines();
                 Activate();
             });
         }
 
-        private async Task Login(string username, string password, bool isOtp, bool isSteam, bool doingAutoLogin, AfterLoginAction action)
+        private async Task Login(LoginType loginType, string username, string password, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
         {
             ProblemCheck.RunCheck(_window);
 
@@ -232,44 +299,6 @@ namespace XIVLauncher.Windows.ViewModel
                 }
             }
 
-            if (string.IsNullOrEmpty(username) && action != AfterLoginAction.ForceQR)
-            // if (!isOtp && !App.Settings.HasComplainedAboutNoOtp.GetValueOrDefault(false))
-            // {
-            //     var otpComplainText = Loc.Localize("OtpComplaint", "Your account does not have One-Time Passwords enabled. This is a security risk and we strongly recommend enabling them."
-            //                                                        + "\n\nYou can enable One-Time Passwords in the account settings on the game's website. We won't show you this message again.");
-
-            //     CustomMessageBox.Show(otpComplainText, "XIVLauncher", MessageBoxButton.OK, MessageBoxImage.Warning, parentWindow: _window);
-            //     App.Settings.HasComplainedAboutNoOtp = true;
-            // }
-
-            // if (string.IsNullOrEmpty(username))
-            {
-                CustomMessageBox.Show(
-                    Loc.Localize("EmptyUsernameError", "Please enter an username."),
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
-
-                return;
-            }
-
-            //if (username.Contains("@") && App.Settings.Language != ClientLanguage.ChineseSimplified)
-            //{
-            //    CustomMessageBox.Show(
-            //        Loc.Localize("EmailUsernameError", "Please enter your SE account name, not your email address."),
-            //        "XIVLauncher", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
-
-            //    return;
-            //}
-
-            //if (string.IsNullOrEmpty(password) && App.Settings.Language != ClientLanguage.ChineseSimplified)
-            //{
-            //    CustomMessageBox.Show(
-            //        Loc.Localize("EmptyPasswordError", "Please enter a password."),
-            //        "XIVLauncher", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
-
-            //    App.Settings.AutologinEnabled = false;
-            //    IsAutoLogin = false;
-            //    return;
-            //}
             if (Area == null || Area.Areaid == "-1")
             {
                 CustomMessageBox.Show(
@@ -278,8 +307,6 @@ namespace XIVLauncher.Windows.ViewModel
                 return;
             }
 
-            if (username == null) username = string.Empty;
-            username = username.Replace(" ", string.Empty); // Remove whitespace
             if (Repository.Ffxiv.GetVer(App.Settings.GamePath) == Constants.BASE_GAME_VERSION &&
                 App.Settings.UniqueIdCacheEnabled)
             {
@@ -290,31 +317,124 @@ namespace XIVLauncher.Windows.ViewModel
 
                 return;
             }
-
-            var hasValidCache = App.UniqueIdCache.HasValidCache(username) && App.Settings.UniqueIdCacheEnabled;
-
-            var otp = string.Empty;
-
-            if (isOtp && (!hasValidCache || action == AfterLoginAction.Repair))
-            {
-                otp = OtpInputDialog.AskForOtp((otpDialog, result) =>
-                {
-                    if (AccountManager.CurrentAccount != null && result != null && AccountManager.CurrentAccount.LastSuccessfulOtp == result)
-                    {
-                        otpDialog.IgnoreCurrentResult(Loc.Localize("DuplicateOtpAfterSuccess",
-                                                                   "This OTP has been already used.\nIt may take up to 30 seconds for a new one."));
-                    }
-                }, _window);
-            }
-
-            if (otp == null)
-                return;
-
-            PersistAccount(username, password);
+            //if (!isScanQrCode)
+            //{
+            //    username = username.Replace(" ", string.Empty); // Remove whitespace
+            //    var hasValidCache = App.UniqueIdCache.HasValidCache(username) && App.Settings.UniqueIdCacheEnabled;
+            //    PersistAccount(username, password);
+            //}
+            //PersistAccount(username, password);
 
             if (!doingAutoLogin) App.Settings.AutologinEnabled = IsAutoLogin;
             App.Settings.FastLogin = IsFastLogin;
-            var loginResult = await TryLoginToGame(username, password, otp, isSteam, action).ConfigureAwait(false);
+
+            var finalLoginType = loginType;
+            string autologinkey = null;
+            if (loginType == LoginType.WeGameSid)
+            {
+                // 选择WeGameSid登录时，忽略已经输入的密码框里面的内容，并打开自动登录
+                doingAutoLogin = true;
+                password = string.Empty;
+            }
+
+            if (doingAutoLogin && loginType != LoginType.SdoQrCode)
+            {
+                var savedAccount = AccountManager.Accounts.FirstOrDefault(x => x.UserName == username);
+                if (savedAccount != null)
+                {
+                    switch (loginType)
+                    {
+                        case LoginType.SdoSlide:
+                        //case LoginType.SdoStatic:
+                        case LoginType.WeGameToken:
+                            autologinkey = savedAccount.AutoLoginSessionKey;
+                            finalLoginType = LoginType.AutoLoginSession;
+                            break;
+                        case LoginType.WeGameSid:
+                            password = savedAccount.TestSID;
+                            finalLoginType = LoginType.WeGameSid;
+                            break;
+                    }
+                }
+                else if (loginType == LoginType.WeGameSid && !readWeGameInfo)
+                {
+                    readWeGameInfo = true;
+                }
+
+                try
+                {
+                    if (password != null)
+                        password = await AccountManager.CredProvider.Decrypt(password);
+                    if (autologinkey != null)
+                        autologinkey = await AccountManager.CredProvider.Decrypt(autologinkey);
+                    if (password.IsNullOrEmpty() && autologinkey.IsNullOrEmpty())
+                        throw new Exception("Failed to decrypt password");
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "Failed to decrypt password");
+                    CustomMessageBox.Show(
+                        "解密失败,无法使用自动登录",
+                        "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
+                    finalLoginType = loginType;
+                }
+            }
+
+            if (loginType == LoginType.WeGameSid)
+            {
+                if (!App.Settings.HasAgreeWeGameUsage.GetValueOrDefault(false))
+                {
+                    var readWeGameUsageAsk = CustomMessageBox.Builder
+                        .NewFrom(
+                        """
+                        为保障您的账号安全，请在使用本功能前仔细阅读以下内容：
+                        🔐 功能原理说明
+                        本工具通过读取最终幻想14游戏中WeGame平台生成的会话密钥实现快速启动功能，不会对WeGame客户端进行任何修改，也不会获取您的WeGame账号密码等敏感信息。
+                        ⚠️ 注意事项
+                        会话密钥具有较长有效期，建议您：
+                        定期通过WeGame官方客户端登录以刷新密钥
+                        避免在公共/共享设备使用本功能
+                        发现异常登录时立即通过WeGame重置密钥
+                        本工具不会且无法主动更新会话密钥，密钥有效性完全依赖WeGame平台的生成机制
+
+                        点击【确认使用】即表示您已理解：妥善保管设备安全是密钥有效性的最终保障，建议每30天通过官方客户端完整登录一次以保持最佳安全性
+                        """)
+                        .WithImage(MessageBoxImage.Warning)
+                        .WithButtons(MessageBoxButton.YesNo)
+                        .WithYesButtonText("确认使用")
+                        .WithCaption("WeGame SID登录功能说明")
+                        .WithYesCountdown(15)
+                        .WithParentWindow(_window)
+                        .Show();
+
+                    if (readWeGameUsageAsk == MessageBoxResult.No)
+                    {
+                        App.Settings.HasAgreeWeGameUsage = false;
+                        return;
+                    }
+                    else
+                    {
+                        App.Settings.HasAgreeWeGameUsage = true;
+                    }
+                }
+
+                readWeGameInfo = username.IsNullOrEmpty() || password.IsNullOrEmpty() ? true : readWeGameInfo;
+
+                // process expire sid time
+                if (readWeGameInfo)
+                {
+                    var loginData = await ReadWegameInfo(username, Area.Areaid);
+                    if (loginData == null) { return; }
+                    if (loginData.SndaID.IsNullOrEmpty() || loginData.SessionId.IsNullOrEmpty())
+                    {
+                        throw new Exception("获取WeGame登录信息失败");
+                    }
+                    username = loginData.SndaID;
+                    password = loginData.SessionId;
+                }
+            }
+            var loginResult = await TryLoginToGame(finalLoginType, loginType, username, password, autologinkey, doingAutoLogin, action).ConfigureAwait(false);
+
             if (loginResult == null)
                 return;
             if (loginResult.State == Launcher.LoginState.NeedsPatchGame && action != AfterLoginAction.Repair)
@@ -332,17 +452,39 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 if (loginResult.State == Launcher.LoginState.Ok)
                 {
-                    if (AccountManager.CurrentAccount == null || AccountManager.CurrentAccount.Id != $"{loginResult.OauthLogin.InputUserId}-{IsOtp}-{IsSteam}")
+                    var accountToSave = new XivAccount()
                     {
-                        var accountToSave = new XivAccount(loginResult.OauthLogin.InputUserId);
-                        AccountManager.AddAccount(accountToSave);
-                        AccountManager.CurrentAccount = accountToSave;
+                        AutoLogin = loginType == LoginType.WeGameSid || doingAutoLogin,
+                        LoginAccount = loginResult.OauthLogin.InputUserId,
+                        SndaId = loginResult.OauthLogin.SndaId,
+                    };
+
+                    accountToSave.AccountType = loginType switch
+                    {
+                        LoginType.WeGameSid => XivAccountType.WeGameSid,
+                        LoginType.WeGameToken => XivAccountType.WeGame,
+                        LoginType.SdoStatic or LoginType.SdoSlide or LoginType.SdoQrCode => XivAccountType.Sdo
+                    };
+
+                    accountToSave.AreaName = Area.AreaName;
+
+                    if (doingAutoLogin && accountToSave.AccountType != XivAccountType.WeGameSid)
+                    {
+                        accountToSave.AutoLoginSessionKey = await AccountManager.CredProvider.Encrypt(loginResult.OauthLogin.AutoLoginSessionKey);
+                        if (finalLoginType == LoginType.SdoStatic)
+                        {
+                            accountToSave.Password = await AccountManager.CredProvider.Encrypt(password);
+                        }
                     }
 
-                    AccountManager.CurrentAccount.Password = loginResult.OauthLogin.Password;
-                    AccountManager.CurrentAccount.AreaID = Area.Areaid;
-                    AccountManager.CurrentAccount.AutoLoginSessionKey = loginResult.OauthLogin.AutoLoginSessionKey;
-
+                    if (accountToSave.AccountType == XivAccountType.WeGameSid)
+                    {
+                        accountToSave.TestSID = await AccountManager.CredProvider.Encrypt(password);
+                        //accountToSave.TestSID = await AccountManager.CredProvider.Encrypt("password");
+                    }
+                    accountToSave.GenerateId();
+                    AccountManager.AddAccount(accountToSave);
+                    AccountManager.CurrentAccount = accountToSave;
                     AccountManager.Save();
                 }
             }
@@ -352,8 +494,9 @@ namespace XIVLauncher.Windows.ViewModel
                         loginResult.State,
                         loginResult.PendingPatches?.Length,
                         loginResult.OauthLogin?.Playable);
-
-            if (await TryProcessLoginResult(loginResult, isSteam, action).ConfigureAwait(false))
+            await AccountManager.CredProvider.ClearCache();
+            password = null;
+            if (await TryProcessLoginResult(loginResult, false, action).ConfigureAwait(false))
             {
                 if (App.Settings.ExitLauncherAfterGameExit ?? true)
                     Environment.Exit(0);
@@ -421,55 +564,44 @@ namespace XIVLauncher.Windows.ViewModel
             return true;
         }
 
-        private async Task<Launcher.LoginResult> TryLoginToGame(string username, string password, string otp, bool isSteam, AfterLoginAction action)
+        private CancellationTokenSource loginCts;
+        public void CancelLogin()
+        {
+            if (this.loginCts != null)
+            {
+                Log.Information("取消登陆");
+                this.loginCts.Cancel();
+            }
+        }
+
+        private static BitmapImage ConvertByteArrayToBitmapImage(byte[] imageData)
+        {
+            if (imageData == null || imageData.Length == 0) return null;
+
+            var bitmapImage = new BitmapImage();
+            using (var stream = new MemoryStream(imageData))
+            {
+                stream.Seek(0, SeekOrigin.Begin); // 确保流的位置在起始处
+                bitmapImage.BeginInit();
+                bitmapImage.CacheOption = BitmapCacheOption.OnLoad; // 加载后立即释放流
+                bitmapImage.StreamSource = stream;
+                bitmapImage.EndInit();
+                bitmapImage.Freeze(); // 可选：跨线程使用时冻结对象
+            }
+            return bitmapImage;
+        }
+
+        private async Task<Launcher.LoginResult> TryLoginToGame(
+            LoginType type,
+            LoginType fallbackLoginType,
+            string username,
+            string password,
+            string autologinkey,
+            bool autoLogin,
+            AfterLoginAction action
+            )
         {
             bool? loginStatus = null;
-
-#if !DEBUG
-            // try
-            // {
-            //     if (refetchLoginStatus)
-            //     {
-            //         var response = await Launcher.GetLoginStatus().ConfigureAwait(false);
-            //         loginStatus = response.Status;
-            //     }
-            //     else
-            //     {
-            //         var response = await this.loginStatusTask;
-            //         loginStatus = response.Status;
-            //         refetchLoginStatus = true;
-            //     }
-            // }
-            // catch (Exception ex)
-            // {
-            //     Log.Error(ex, "Could not obtain gate status");
-            // }
-
-            //if (loginStatus == null)
-            //{
-            //    CustomMessageBox.Builder.NewFrom(Loc.Localize("GateUnreachable", "The login servers could not be reached. This usually indicates that the game is under maintenance, or that your connection to the login servers is unstable.\n\nPlease try again later."))
-            //                    .WithImage(MessageBoxImage.Asterisk)
-            //                    .WithButtons(MessageBoxButton.OK)
-            //                    .WithShowHelpLinks(true)
-            //                    .WithCaption("XIVLauncher")
-            //                    .WithParentWindow(_window)
-            //                    .Show();
-
-            //    return null;
-            //}
-
-            // if (loginStatus == false)
-            // {
-            //     CustomMessageBox.Builder.NewFrom(Loc.Localize("GateClosed", "The game is currently under maintenance. Please try again later or see official sources for more information."))
-            //                     .WithImage(MessageBoxImage.Asterisk)
-            //                     .WithButtons(MessageBoxButton.OK)
-            //                     .WithCaption("XIVLauncher")
-            //                     .WithParentWindow(_window)
-            //                     .Show();
-
-            //    return null;
-            //}
-#endif
 
             try
             {
@@ -483,24 +615,47 @@ namespace XIVLauncher.Windows.ViewModel
                 var checkResult = await Launcher.CheckGameUpdate(Area, gamePath, action == AfterLoginAction.Repair);
                 if (checkResult.State == Launcher.LoginState.NeedsPatchGame || action == AfterLoginAction.UpdateOnly)
                     return checkResult;
-                if (username == null) username = string.Empty;
-                return await Launcher.LoginSdo(username, password, (state, msg) =>
+
+                if (type == LoginType.AutoLoginSession)
                 {
-                    LoginMessage = msg;
-                    //Log.Information(msg);
-                    if (state == Launcher.SdoLoginState.GotQRCode)
+                    try
                     {
-                        new Task(() =>
+                        return await this.Launcher.LoginBySessionKey(username, autologinkey).ConfigureAwait(false);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.Error("LoginBySessionKey failed, fallback to {fallbackLoginType}:{ex}", fallbackLoginType, e);
+                        type = fallbackLoginType;
+                    }
+                }
+
+                switch (type)
+                {
+                    case LoginType.SdoStatic:
+                        return await Launcher.LoginBySdoStatic(username, password).ConfigureAwait(false);
+
+                    case LoginType.SdoSlide:
+                        return await Launcher.LoginBySlide(username, autoLogin, this.loginCts, (code) =>
                         {
-                            QRDialog.OpenQRWindow(_window, () => Launcher.CancelLogin());
-                        }).Start();
-                    }
-                    else if (state == Launcher.SdoLoginState.LoginSucess || state == Launcher.SdoLoginState.LoginFail || state == Launcher.SdoLoginState.OutTime)
-                    {
-                        QRDialog.CloseQRWindow(_window);
-                    }
-                }, action == AfterLoginAction.ForceQR,
-                    IsFastLogin, AccountManager.CurrentAccount.AutoLoginSessionKey).ConfigureAwait(false);
+                            Log.Information($"叨鱼确认码:{code}");
+                            this.LoginMessage = $"确认码: {code}";
+                        }).ConfigureAwait(false);
+
+                    case LoginType.SdoQrCode:
+                        return await Launcher.LoginByScanQrCode(autoLogin, this.loginCts, (qrBytes) =>
+                        {
+                            this.QrCodeBitmapImage = ConvertByteArrayToBitmapImage(qrBytes);
+                        }).ConfigureAwait(false);
+
+                    case LoginType.WeGameToken:
+                        return await Launcher.LoginByWeGameToken(username, password, autoLogin).ConfigureAwait(false);
+
+                    case LoginType.WeGameSid:
+                        return await Launcher.LoginBySid(username, password).ConfigureAwait(false);
+
+                    default:
+                        throw new Exception($"Known LoginType:{type}");
+                }
             }
             catch (Exception ex)
             {
@@ -512,6 +667,32 @@ namespace XIVLauncher.Windows.ViewModel
                              .WithShowHelpLinks(true)
                              .WithShowDiscordLink(true)
                              .WithParentWindow(_window);
+
+                if (ex is SdoLoginException sdoLoginEx)
+                {
+                    if (this.loginCts.IsCancellationRequested)
+                    {
+                        Log.Information($"手动取消登录");
+                        this.loginCts.Dispose();
+                        this.loginCts = null;
+                        return null;
+                    }
+                    if (sdoLoginEx.RemoveAutoLoginSessionKey)
+                    {
+                        Log.Information($"快速登录失败,清除SessionKey:{username}");
+                        var account = this.AccountManager.Accounts.First(x => x.UserName == username);
+                        account.AutoLoginSessionKey = null;
+                        this.AccountManager.Save(account);
+                    }
+
+                    msgbox = new CustomMessageBox.Builder()
+                            .WithCaption($"{Loc.Localize("LoginNoOauthTitle", "Login issue")}: {sdoLoginEx.ErrorCode}")
+                            .WithImage(MessageBoxImage.Question)
+                            .WithParentWindow(_window)
+                            .WithText(sdoLoginEx.Message);
+                    msgbox.Show();
+                    return null;
+                }
 
                 bool disableAutoLogin = false;
 
@@ -1176,7 +1357,7 @@ namespace XIVLauncher.Windows.ViewModel
                 new DirectoryInfo(Paths.RoamingPath),
                 App.Settings.Language.GetValueOrDefault(ClientLanguage.English),
                 (int)App.Settings.DalamudInjectionDelayMs,
-                false, 
+                false,
                 noPlugins,
                 noThird,
                 Troubleshooting.GetTroubleshootingJson());
@@ -1249,7 +1430,7 @@ namespace XIVLauncher.Windows.ViewModel
                                                        Area.AreaConfigUpload,
                                                        App.Settings.AdditionalLaunchArgs,
                                                        App.Settings.GamePath,
-                                                       App.Settings.EncryptArguments.GetValueOrDefault(false),
+                                                       App.Settings.EncryptArgumentsV2.GetValueOrDefault(true),
                                                        App.Settings.DpiAwareness.GetValueOrDefault(DpiAwareness.Unaware));
             // var launched = this.Launcher.LaunchGame(gameRunner,
             //     loginResult.UniqueId,
@@ -1329,57 +1510,57 @@ namespace XIVLauncher.Windows.ViewModel
                 args.Cancel = true;
         }
 
-        private void PersistAccount(string username, string password)
-        {
-            if (username.IsNullOrEmpty()) username = String.Empty;
+        //private void PersistAccount(string username, string password)
+        //{
+        //    if (username.IsNullOrEmpty()) username = String.Empty;
 
-            if (AccountManager.CurrentAccount != null && AccountManager.CurrentAccount.UserName.Equals(username) &&
-                AccountManager.CurrentAccount.Password != password &&
-                AccountManager.CurrentAccount.SavePassword)
-                AccountManager.UpdatePassword(AccountManager.CurrentAccount, password);
+        //    if (AccountManager.CurrentAccount != null && AccountManager.CurrentAccount.UserName.Equals(username) &&
+        //        AccountManager.CurrentAccount.Password != password &&
+        //        AccountManager.CurrentAccount.AutoLogin)
+        //        AccountManager.UpdatePassword(AccountManager.CurrentAccount, password);
 
-            if (AccountManager.CurrentAccount != null && AccountManager.CurrentAccount.UserName.Equals(username))
-                AccountManager.CurrentAccount.AreaID = Area.Areaid;
+        //    if (AccountManager.CurrentAccount != null && AccountManager.CurrentAccount.UserName.Equals(username))
+        //        AccountManager.CurrentAccount.AreaID = Area.Areaid;
 
-            if (AccountManager.CurrentAccount == null ||
-                AccountManager.CurrentAccount.Id != $"{username}-{IsOtp}-{IsSteam}")
-            try
-            {
-                if (AccountManager.CurrentAccount != null && AccountManager.CurrentAccount.UserName.Equals(username, StringComparison.Ordinal) &&
-                    AccountManager.CurrentAccount.Password != password &&
-                    AccountManager.CurrentAccount.SavePassword)
-                    AccountManager.UpdatePassword(AccountManager.CurrentAccount, password);
+        //    if (AccountManager.CurrentAccount == null ||
+        //        AccountManager.CurrentAccount.Id != $"{username}-{IsOtp}-{IsSteam}")
+        //        try
+        //        {
+        //            if (AccountManager.CurrentAccount != null && AccountManager.CurrentAccount.UserName.Equals(username, StringComparison.Ordinal) &&
+        //                AccountManager.CurrentAccount.Password != password &&
+        //                AccountManager.CurrentAccount.SavePassword)
+        //                AccountManager.UpdatePassword(AccountManager.CurrentAccount, password);
 
-                if (AccountManager.CurrentAccount == null ||
-                    AccountManager.CurrentAccount.Id != $"{username}-{IsOtp}-{IsSteam}")
-                {
-                    var accountToSave = new XivAccount(username)
-                    {
-                        Password = password,
-                        SavePassword = true,
-                        UseOtp = IsOtp,
-                        UseSteamServiceAccount = IsSteam,
-                        AreaID = Area.Areaid
-                    };
+        //            if (AccountManager.CurrentAccount == null ||
+        //                AccountManager.CurrentAccount.Id != $"{username}-{IsOtp}-{IsSteam}")
+        //            {
+        //                var accountToSave = new XivAccount(username)
+        //                {
+        //                    Password = password,
+        //                    SavePassword = true,
+        //                    //UseOtp = IsOtp,
+        //                    //UseSteamServiceAccount = IsSteam,
+        //                    AreaName = Area.AreaName
+        //                };
 
-                    AccountManager.AddAccount(accountToSave);
+        //                AccountManager.AddAccount(accountToSave);
 
-                    AccountManager.CurrentAccount = accountToSave;
-                }
-            }
-            catch (Win32Exception ex)
-            {
-                CustomMessageBox.Builder
-                                .NewFrom(Loc.Localize("PersistAccountError",
-                                                      "XIVLauncher could not save your account information. This is likely caused by having too many saved accounts in the Windows Credential Manager.\nPlease try removing some of them."))
-                                .WithAppendDescription(ex.ToString())
-                                .WithShowHelpLinks()
-                                .WithImage(MessageBoxImage.Warning)
-                                .WithButtons(MessageBoxButton.OK)
-                                .WithParentWindow(_window)
-                                .Show();
-            }
-        }
+        //                AccountManager.CurrentAccount = accountToSave;
+        //            }
+        //        }
+        //        catch (Win32Exception ex)
+        //        {
+        //            CustomMessageBox.Builder
+        //                            .NewFrom(Loc.Localize("PersistAccountError",
+        //                                                  "XIVLauncher could not save your account information. This is likely caused by having too many saved accounts in the Windows Credential Manager.\nPlease try removing some of them."))
+        //                            .WithAppendDescription(ex.ToString())
+        //                            .WithShowHelpLinks()
+        //                            .WithImage(MessageBoxImage.Warning)
+        //                            .WithButtons(MessageBoxButton.OK)
+        //                            .WithParentWindow(_window)
+        //                            .Show();
+        //        }
+        //}
 
         private async Task<bool> HandleBootCheck()
         {
@@ -1563,21 +1744,6 @@ namespace XIVLauncher.Windows.ViewModel
 
         #region Bindings
 
-        private bool _enableInjector;
-
-        public bool EnableInjector
-        {
-            get => this._enableInjector;
-            set
-            {
-                this._enableInjector = value;
-                App.Settings.EnableInjector = value;
-                IsLoadingDialogOpen = value;
-                if (value) LoadingDialogMessage = "正在使用自动注入模式";
-                OnPropertyChanged(nameof(EnableInjector));
-            }
-        }
-
         private bool _isAutoLogin;
         public bool IsAutoLogin
         {
@@ -1597,6 +1763,17 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 _isFastLogin = value;
                 OnPropertyChanged(nameof(IsFastLogin));
+            }
+        }
+
+        private bool _isReadWegameInfo;
+        public bool IsReadWegameInfo
+        {
+            get => _isReadWegameInfo;
+            set
+            {
+                _isReadWegameInfo = value;
+                OnPropertyChanged(nameof(IsReadWegameInfo));
             }
         }
 
@@ -1630,6 +1807,17 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 _username = value;
                 OnPropertyChanged(nameof(Username));
+            }
+        }
+
+        private GuiLoginType _guiLoginType;
+        public GuiLoginType GuiLoginType
+        {
+            get => _guiLoginType;
+            set
+            {
+                _guiLoginType = value;
+                OnPropertyChanged(nameof(GuiLoginType));
             }
         }
 
@@ -1709,7 +1897,7 @@ namespace XIVLauncher.Windows.ViewModel
                 OnPropertyChanged(nameof(LoginMessage));
             }
         }
-        
+
         private SolidColorBrush _worldStatusIconColor;
         public SolidColorBrush WorldStatusIconColor
         {
@@ -1718,6 +1906,17 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 _worldStatusIconColor = value;
                 OnPropertyChanged(nameof(WorldStatusIconColor));
+            }
+        }
+
+        private BitmapImage _qrCodeBitmapImage;
+        public BitmapImage QrCodeBitmapImage
+        {
+            get => _qrCodeBitmapImage;
+            set
+            {
+                _qrCodeBitmapImage = value;
+                OnPropertyChanged(nameof(QrCodeBitmapImage));
             }
         }
 
