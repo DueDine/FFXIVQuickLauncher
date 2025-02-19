@@ -370,7 +370,7 @@ namespace XIVLauncher.Windows.ViewModel
                         password = await AccountManager.CredProvider.Decrypt(password);
                     if (autologinkey != null)
                         autologinkey = await AccountManager.CredProvider.Decrypt(autologinkey);
-                    if (password.IsNullOrEmpty() && autologinkey.IsNullOrEmpty())
+                    if (savedAccount != null && password.IsNullOrEmpty() && autologinkey.IsNullOrEmpty())
                         throw new Exception("Failed to decrypt password");
                 }
                 catch (Exception ex)
