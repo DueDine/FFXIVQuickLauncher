@@ -358,29 +358,30 @@ namespace XIVLauncher.Windows.ViewModel
                             finalLoginType = LoginType.WeGameSid;
                             break;
                     }
+
+                    try
+                    {
+                        if (password != null)
+                            password = await AccountManager.CredProvider.Decrypt(password);
+                        if (autologinkey != null)
+                            autologinkey = await AccountManager.CredProvider.Decrypt(autologinkey);
+                        if (password.IsNullOrEmpty() && autologinkey.IsNullOrEmpty())
+                            throw new Exception("Failed to decrypt password");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error(ex, "Failed to decrypt password");
+                        CustomMessageBox.Show(
+                            "解密失败,无法使用自动登录",
+                            "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
+                        finalLoginType = loginType;
+                    }
                 }
                 else if (loginType == LoginType.WeGameSid && !readWeGameInfo)
                 {
                     readWeGameInfo = true;
                 }
 
-                try
-                {
-                    if (password != null)
-                        password = await AccountManager.CredProvider.Decrypt(password);
-                    if (autologinkey != null)
-                        autologinkey = await AccountManager.CredProvider.Decrypt(autologinkey);
-                    if (savedAccount != null && password.IsNullOrEmpty() && autologinkey.IsNullOrEmpty())
-                        throw new Exception("Failed to decrypt password");
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Failed to decrypt password");
-                    CustomMessageBox.Show(
-                        "解密失败,无法使用自动登录",
-                        "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
-                    finalLoginType = loginType;
-                }
             }
 
             if (loginType == LoginType.WeGameSid)
