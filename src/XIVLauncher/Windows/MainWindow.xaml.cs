@@ -767,9 +767,66 @@ namespace XIVLauncher.Windows
             //}
         }
 
-        private void ReadWeGameLoginData_OnClick(object sender, RoutedEventArgs e)
+        private void InjectGame_OnClick(object sender, RoutedEventArgs e)
         {
-            CustomMessageBox.Show("自动注入目前已禁用，请在上方选择其他方式登录。", "看看别处");
+            try
+            {
+                var startInfo = new DalamudStartInfo
+                {
+                    ConfigurationPath = DalamudSettings.GetConfigPath(new DirectoryInfo(Paths.RoamingPath)),
+                    LoggingPath = Paths.RoamingPath,
+                    PluginDirectory = Path.Combine(Paths.RoamingPath, "installedPlugins"),
+                    Language = ClientLanguage.ChineseSimplified,
+                    DelayInitializeMs = (int)App.Settings.DalamudInjectionDelayMs,
+                    WorkingDirectory = App.DalamudUpdater.Runner.Directory?.FullName,
+                    AssetDirectory = App.DalamudUpdater.AssetDirectory.FullName,
+                    TroubleshootingPackData = Troubleshooting.GetTroubleshootingJson(),
+                };
+                var pid = GetGameProcess();
+
+                if (pid == -1)
+                {
+                    CustomMessageBox.Show($"没有找到对应的游戏进程, 请检查后重试", "注入失败");
+                    return;
+                }
+
+                var gameExePath = Process.GetProcessById(pid).MainModule?.FileName;
+                var gameExeFolder = Path.GetDirectoryName(gameExePath);
+                var gamePath = (new DirectoryInfo(gameExeFolder!)).Parent;
+
+                if (!DalamudLauncher.CanRunDalamud(gamePath))
+                {
+                    CustomMessageBox.Show($"在{gamePath} 安装的游戏版本暂不支持注入", "注入失败");
+                    return;
+                }
+
+                startInfo.GameVersion = Repository.Ffxiv.GetVer(gamePath);
+
+                WindowsDalamudRunner.Inject(new FileInfo(Path.Combine(startInfo.WorkingDirectory!, "Dalamud.Injector.exe")),
+                                            pid, new Dictionary<string, string>(), DalamudLoadMethod.DllInject, startInfo);
+                Environment.Exit(0);
+            }
+            catch (Exception exception)
+            {
+                Log.Error($"Error when InjectGame: {exception}");
+                CustomMessageBox.Show($"注入失败, 这可能是无法连接到卫月更新服务器导致的.\n{App.DalamudUpdater.EnsurementException ?? exception}", "注入错误");
+            }
+        }
+
+        private static int GetGameProcess()
+        {
+            var pids = Process.GetProcesses().Where(process =>
+            {
+                if (process.ProcessName == "ffxiv_dx11")
+                {
+                    return !process.MainWindowTitle.Contains("FINAL FANTASY XIV"); //非国际服
+                }
+
+                return false;
+            }).ToList().ConvertAll(process => process.Id).ToList();
+            if (pids.Count == 0) return -1;
+
+            return pids[0];
         }
 
         private void BackToLoginPageButton_OnClick(object sender, RoutedEventArgs e)

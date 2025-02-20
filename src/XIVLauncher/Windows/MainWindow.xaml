@@ -153,9 +153,9 @@
                                     x:Name="QueueButton"
                                     Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
                                     Focusable="False"
-                                    ToolTip="请在上方选择对应的登录方式"
+                                    ToolTip="注入现有的游戏进程"
                                     Margin="0" Height="77" Width="77"
-                                    Click="ReadWeGameLoginData_OnClick" Cursor="Hand">
+                                    Click="InjectGame_OnClick" Cursor="Hand">
                                     <StackPanel Orientation="Vertical"
                                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                         <materialDesign:PackIcon Kind="Injection"
