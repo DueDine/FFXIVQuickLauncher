@@ -155,7 +155,7 @@
                                     Focusable="False"
                                     ToolTip="注入现有的游戏进程"
                                     Margin="0" Height="77" Width="77"
-                                    Click="InjectGame_OnClick" Cursor="Hand">
+                                    Command="{Binding Path=InjectGameCommand}" Cursor="Hand">
                                     <StackPanel Orientation="Vertical"
                                                 HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
                                         <materialDesign:PackIcon Kind="Injection"

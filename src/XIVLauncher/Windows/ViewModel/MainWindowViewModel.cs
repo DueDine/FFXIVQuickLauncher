@@ -82,7 +82,7 @@ namespace XIVLauncher.Windows.ViewModel
             LoginRepairCommand = new SyncCommand(GetLoginFunc(AfterLoginAction.Repair), () => !IsLoggingIn);
             LoginCancelCommand = new SyncCommand(GetLoginFunc(AfterLoginAction.CancelLogin));
             LoginForceQRCommand = new SyncCommand(GetLoginFunc(AfterLoginAction.ForceQR));
-
+            InjectGameCommand = new SyncCommand(obj => { this.TryInjectGame(); });
             var frontierUrl = Updates.UpdateLease?.FrontierUrl;
 #if DEBUG || RELEASENOUPDATE
             // FALLBACK
@@ -1353,6 +1353,136 @@ namespace XIVLauncher.Windows.ViewModel
             Environment.Exit(0);
         }
 
+        bool IsInjecting = false;
+        public void TryInjectGame()
+        {
+            if (this.IsInjecting)
+                return;
+            //if (username == null) username = string.Empty;
+            if (_window.Dispatcher != Dispatcher.CurrentDispatcher)
+            {
+                _window.Dispatcher.Invoke(() => TryInjectGame());
+                return;
+            }
+            IsLoadingDialogOpen = true;
+            LoadingDialogMessage = "注入灵魂中...";
+            Task.Run(() =>
+            {
+                try
+                {
+                    if (InjectGame()) {
+                        var dialog = CustomMessageBox.Builder
+                            .NewFrom("是否退出XIVLauncherCN?")
+                            .WithButtons(MessageBoxButton.YesNo)
+                            .WithCaption("注入完成")
+                            .WithParentWindow(_window)
+                            .Show();
+                        if (dialog == MessageBoxResult.Yes) { 
+                            Log.CloseAndFlush();
+                            Environment.Exit(0);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    CustomMessageBox.Builder.NewFromUnexpectedException(ex, "InjectGame")
+                                    .WithParentWindow(_window)
+                                    .Show();
+                }
+                IsLoadingDialogOpen = false;
+                IsInjecting = false;
+                Activate();
+            });
+        }
+        public bool InjectGame(bool noThird = false, bool noPlugins = false)
+        {
+            var pidList = AppUtil.GetGameProcessIds();
+            if (pidList.Count() == 0)
+            {
+                CustomMessageBox.Show($"没有找到对应的游戏进程, 请检查后重试", "注入失败");
+                return false;
+            }
+
+            var gamePid = pidList.First();
+            var gameExePath = Process.GetProcessById(gamePid).MainModule?.FileName;
+            var gameExeFolder = Path.GetDirectoryName(gameExePath);
+            var gamePath = (new DirectoryInfo(gameExeFolder!)).Parent;
+
+            var dalamudLauncher = new DalamudLauncher(new WindowsDalamudRunner(), App.DalamudUpdater, DalamudLoadMethod.DllInject,
+                gamePath,
+                new DirectoryInfo(Paths.RoamingPath),
+                new DirectoryInfo(Paths.RoamingPath),
+                App.Settings.Language.GetValueOrDefault(ClientLanguage.ChineseSimplified),
+                (int)App.Settings.DalamudInjectionDelayMs,
+                false,
+                noPlugins,
+                noThird,
+                Troubleshooting.GetTroubleshootingJson());
+
+            var dalamudOk = false;
+
+            var dalamudCompatCheck = new WindowsDalamudCompatibilityCheck();
+
+            try
+            {
+                dalamudCompatCheck.EnsureCompatibility();
+            }
+            catch (IDalamudCompatibilityCheck.NoRedistsException ex)
+            {
+                Log.Error(ex, "No Dalamud Redists found");
+
+                CustomMessageBox.Show(
+                    Loc.Localize("DalamudVc2019RedistError",
+                        "The XIVLauncher in-game addon needs the Microsoft Visual C++ 2015-2019 redistributable to be installed to continue. Please install it from the Microsoft homepage."),
+                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+            }
+            catch (IDalamudCompatibilityCheck.ArchitectureNotSupportedException ex)
+            {
+                Log.Error(ex, "Architecture not supported");
+
+                CustomMessageBox.Show(
+                    Loc.Localize("DalamudArchError",
+                        "Dalamud cannot run your computer's architecture. Please make sure that you are running a 64-bit version of Windows.\nIf you are using Windows on ARM, please make sure that x64-Emulation is enabled for XIVLauncher."),
+                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+            }
+
+            try
+            {
+                var dalamudStatus = dalamudLauncher.HoldForUpdate(App.Settings.GamePath);
+                dalamudOk = dalamudStatus == DalamudLauncher.DalamudInstallState.Ok;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Couldn't DalamudLauncher::HoldForUpdate()");
+
+                var ensurementErrorMessage = Loc.Localize("DalamudEnsurementError",
+                                                          "Could not download necessary data files to use Dalamud and plugins.\nThis could be a problem with your internet connection, or might be caused by your antivirus application blocking necessary files. The game will start, but you will not be able to use plugins.\n\nPlease check our FAQ for more information.");
+
+                if (ex is HttpRequestException httpRequestException && httpRequestException.StatusCode.HasValue && (int)httpRequestException.StatusCode is 403 or 444 or 522)
+                    ensurementErrorMessage = "错误: " + $"服务器返回了错误代码 {httpRequestException.StatusCode}.\n你的IP可能被WAF封禁, 请前往频道进行上报." + Environment.NewLine + ensurementErrorMessage;
+                else
+                    ensurementErrorMessage = "错误: " + ex.Message + Environment.NewLine + ensurementErrorMessage;
+
+                CustomMessageBox.Builder
+                                .NewFrom(ensurementErrorMessage)
+                                .WithImage(MessageBoxImage.Warning)
+                                .WithButtons(MessageBoxButton.OK)
+                                .WithShowHelpLinks()
+                                .WithParentWindow(_window)
+                                .Show();
+            }
+
+            Troubleshooting.LogTroubleshooting();
+            if (!dalamudOk)
+            {
+                CustomMessageBox.Show($"Dalamud尚未下载完成", "注入失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+
+            dalamudLauncher.Inject(gamePid, noPlugins);
+            return true;
+        }
+
         public async Task<Process> StartGameAndAddon(Launcher.LoginResult loginResult, bool isSteam, bool forceNoDalamud, bool noThird, bool noPlugins)
         {
             var dalamudLauncher = new DalamudLauncher(new WindowsDalamudRunner(), App.DalamudUpdater, App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
@@ -1743,6 +1873,8 @@ namespace XIVLauncher.Windows.ViewModel
         public ICommand LoginCancelCommand { get; set; }
 
         public ICommand LoginForceQRCommand { get; set; }
+
+        public ICommand InjectGameCommand { get; set; }
 
         #endregion
 

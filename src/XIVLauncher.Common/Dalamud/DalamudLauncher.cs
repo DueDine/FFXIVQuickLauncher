@@ -1,7 +1,9 @@
-﻿using System.Collections.Generic;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
+using System.Text;
 using System.Threading;
 using Newtonsoft.Json;
 using Serilog;
@@ -82,6 +84,63 @@ namespace XIVLauncher.Common.Dalamud
             return DalamudInstallState.Ok;
         }
 
+        public void Inject(int gamePid, bool safeMode = false)
+        {
+            Log.Information("[HOOKS] DalamudLauncher::Run(gp:{0}, cl:{1})", this.gamePath.FullName, this.language);
+
+            var ingamePluginPath = Path.Combine(this.configDirectory.FullName, "installedPlugins");
+
+            Directory.CreateDirectory(ingamePluginPath);
+
+            var startInfo = new DalamudStartInfo
+            {
+                Language = language,
+                PluginDirectory = ingamePluginPath,
+                ConfigurationPath = DalamudSettings.GetConfigPath(this.configDirectory),
+                LoggingPath = this.logPath.FullName,
+                AssetDirectory = this.updater.AssetDirectory.FullName,
+                GameVersion = Repository.Ffxiv.GetVer(gamePath),
+                WorkingDirectory = this.updater.Runner.Directory?.FullName,
+                DelayInitializeMs = this.injectionDelay,
+                TroubleshootingPackData = this.troubleshootingData,
+            };
+
+            var launchArguments = new List<string>
+            {
+                "inject -v",
+                $"{gamePid}",
+                //$"--all --warn",
+                //$"--game=\"{gamePath}\"",
+                DalamudInjectorArgs.WorkingDirectory(startInfo.WorkingDirectory),
+                DalamudInjectorArgs.ConfigurationPath(startInfo.ConfigurationPath),
+                DalamudInjectorArgs.LoggingPath(startInfo.LoggingPath),
+                DalamudInjectorArgs.PluginDirectory(startInfo.PluginDirectory),
+                DalamudInjectorArgs.AssetDirectory(startInfo.AssetDirectory),
+                DalamudInjectorArgs.ClientLanguage((int)startInfo.Language),
+                DalamudInjectorArgs.DelayInitialize(startInfo.DelayInitializeMs),
+                DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData))),
+
+            };
+
+            if (safeMode) launchArguments.Add("--no-plugin");
+
+            var psi = new ProcessStartInfo(this.updater.Runner.FullName)
+            {
+                Arguments = string.Join(" ", launchArguments),
+                RedirectStandardOutput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            // psi.EnvironmentVariables.Add("DALAMUD_RUNTIME", startInfo.RuntimeDirectory);
+
+            var dalamudProcess = Process.Start(psi);
+            while (!dalamudProcess.StandardOutput.EndOfStream)
+            {
+                string line = dalamudProcess.StandardOutput.ReadLine();
+                Log.Information(line);
+            }
+        }
         public Process Run(FileInfo gameExe, string gameArgs, IDictionary<string, string> environment)
         {
             Log.Information("[HOOKS] DalamudLauncher::Run(gp:{0}, cl:{1})", this.gamePath.FullName, this.language);
