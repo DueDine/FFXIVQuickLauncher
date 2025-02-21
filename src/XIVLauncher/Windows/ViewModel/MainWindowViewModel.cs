@@ -17,7 +17,6 @@ using Castle.Core.Internal;
 using CheapLoc;
 using FfxivArgLauncher;
 using Serilog;
-using Windows.UI.WebUI;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
