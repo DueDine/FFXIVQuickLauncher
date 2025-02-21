@@ -17,6 +17,7 @@ using Castle.Core.Internal;
 using CheapLoc;
 using FfxivArgLauncher;
 using Serilog;
+using Windows.UI.WebUI;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
@@ -1370,14 +1371,16 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 try
                 {
-                    if (InjectGame()) {
+                    if (InjectGame())
+                    {
                         var dialog = CustomMessageBox.Builder
                             .NewFrom("是否退出XIVLauncherCN?")
                             .WithButtons(MessageBoxButton.YesNo)
                             .WithCaption("注入完成")
                             .WithParentWindow(_window)
                             .Show();
-                        if (dialog == MessageBoxResult.Yes) { 
+                        if (dialog == MessageBoxResult.Yes)
+                        {
                             Log.CloseAndFlush();
                             Environment.Exit(0);
                         }
@@ -1407,6 +1410,15 @@ namespace XIVLauncher.Windows.ViewModel
             var gameExePath = Process.GetProcessById(gamePid).MainModule?.FileName;
             var gameExeFolder = Path.GetDirectoryName(gameExePath);
             var gamePath = (new DirectoryInfo(gameExeFolder!)).Parent;
+
+            if (!DalamudLauncher.CanRunDalamud(new DirectoryInfo(gameExeFolder)))
+            {
+                CustomMessageBox.Show(
+                    Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!"),
+                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Asterisk);
+                return false;
+            }
+
 
             var dalamudLauncher = new DalamudLauncher(new WindowsDalamudRunner(), App.DalamudUpdater, DalamudLoadMethod.DllInject,
                 gamePath,
