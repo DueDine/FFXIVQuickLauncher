@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -17,7 +18,6 @@ using Castle.Core.Internal;
 using CheapLoc;
 using FfxivArgLauncher;
 using Serilog;
-using Windows.UI.WebUI;
 using XIVLauncher.Accounts;
 using XIVLauncher.Common;
 using XIVLauncher.Common.Addon;
@@ -1537,6 +1537,8 @@ namespace XIVLauncher.Windows.ViewModel
 
         public async Task<Process> StartGameAndAddon(Launcher.LoginResult loginResult, bool isSteam, bool forceNoDalamud, bool noThird, bool noPlugins)
         {
+            var stopwatch = new Stopwatch();
+            stopwatch.Start();
             var dalamudLauncher = new DalamudLauncher(new WindowsDalamudRunner(), App.DalamudUpdater, App.Settings.InGameAddonLoadMethod.GetValueOrDefault(DalamudLoadMethod.DllInject),
                 App.Settings.GamePath,
                 new DirectoryInfo(Paths.RoamingPath),
@@ -1605,7 +1607,11 @@ namespace XIVLauncher.Windows.ViewModel
             }
 
             var gameRunner = new WindowsGameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
-
+            stopwatch.Stop();
+            if (stopwatch.Elapsed > TimeSpan.FromMinutes(5)) {
+                CustomMessageBox.Show("会话已过期,请重新登录","XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+                return null;
+            }
             // We won't do any sanity checks here anymore, since that should be handled in StartLogin
             var launched = this.Launcher.LaunchGameSdo(gameRunner,
                                                        loginResult.OauthLogin.SessionId,

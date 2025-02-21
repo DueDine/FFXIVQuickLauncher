@@ -87,7 +87,7 @@ namespace XIVLauncher.Windows
             Model.ReloadHeadlines += () => Task.Run(SetupHeadlines);
 
             LoginTypeSelection.ItemsSource = GuiLoginType.Get(App.Settings.ShowWeGameTokenLogin.GetValueOrDefault(false));
-            LoginTypeSelection.SelectedValue = LoginType.SdoSlide;
+            LoginTypeSelection.SelectedValue = App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.SdoSlide);
             NewsListView.ItemsSource = new List<News>
             {
                 new News
@@ -374,14 +374,14 @@ namespace XIVLauncher.Windows
                 SettingsControl.ReloadSettings();
             }
             Task.Run(async () =>
-
             {
                 await SetupServers();
-                Dispatcher.BeginInvoke(new Action(() =>
+                Dispatcher.Invoke(() =>
                 {
                     if (savedAccount != null)
                         SwitchAccount(savedAccount, false);
-                }));
+                    //LoginTypeSelection.SelectedValue = App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.SdoSlide);
+                });
                 await SetupHeadlines();
                 Troubleshooting.LogTroubleshooting();
             });
@@ -594,12 +594,26 @@ namespace XIVLauncher.Windows
             Model.Username = account.UserName;
             //Model.IsOtp = account.UseOtp;
             //Model.IsSteam = account.UseSteamServiceAccount;
-            Model.IsAutoLogin = App.Settings.AutologinEnabled;
+            Model.IsFastLogin = account.AutoLogin;
             Model.Area = _sdoAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
+            LoginPassword.Password = string.Empty;
+            if (saveAsCurrent)
+            {
+                _accountManager.CurrentAccount = account;
+            }
+
             switch (account.AccountType)
             {
                 case XivAccountType.Sdo:
-                    LoginTypeSelection.SelectedValue = LoginType.SdoSlide;
+                    if (account.Password is not null)
+                    {
+                        LoginTypeSelection.SelectedValue = LoginType.SdoStatic;
+                        LoginPassword.Password = account.Password;
+                    }
+                    else
+                    {
+                        LoginTypeSelection.SelectedValue = LoginType.SdoSlide;
+                    }
                     break;
                 case XivAccountType.WeGame:
                     LoginTypeSelection.SelectedValue = LoginType.WeGameToken;
@@ -607,11 +621,6 @@ namespace XIVLauncher.Windows
                 case XivAccountType.WeGameSid:
                     LoginTypeSelection.SelectedValue = LoginType.WeGameSid;
                     break;
-            }
-
-            if (saveAsCurrent)
-            {
-                _accountManager.CurrentAccount = account;
             }
         }
 
@@ -715,7 +724,7 @@ namespace XIVLauncher.Windows
             FastLoginCheckBox.Visibility = Visibility.Visible;
             ReadWeGameInfoCheckBox.Visibility = Visibility.Collapsed;
             FastLoginCheckBox.Content = "快速登录";
-
+            LoginPassword.Password = string.Empty;
             HintAssist.SetHint(this.LoginUsername, "盛趣账号");
             HintAssist.SetHint(this.LoginPassword, "密码");
 
@@ -732,11 +741,6 @@ namespace XIVLauncher.Windows
                     LoginPassword.Visibility = Visibility.Visible;
                     FastLoginCheckBox.Content = "保存密码";
                     //FastLoginCheckBox.Visibility = Visibility.Collapsed;
-                    var savedAccount = App.AccountManager.Accounts.FirstOrDefault(x => x.UserName == LoginUsername.Text);
-                    if (savedAccount != null)
-                    {
-                        LoginPassword.Password = savedAccount.Password;
-                    }
                     break;
                 case LoginType.WeGameToken:
                     LoginPassword.Visibility = Visibility.Visible;
