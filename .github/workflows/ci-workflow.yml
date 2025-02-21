@@ -38,9 +38,39 @@ jobs:
           .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=Release
       - name: Generate Hashes File
         run: .\scripts\CreateHashList.ps1 .\src\bin\win-x64
+      - name: Generate release tag (UTC+8)
+        id: generate-tag
+        run: |
+          $tzId = "China Standard Time"
+          $utcNow = [DateTime]::UtcNow
+          $cstTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($utcNow, $tzId)
+          
+          # 东八区日期部分
+          $datePart = $cstTime.ToString("yy-MM-dd")
+          
+          # 获取当天所有标签
+          git fetch --tags
+          $tags = git tag --list "$datePart-*"
+          
+          # 查找最大序号
+          $maxNumber = 0
+          foreach ($tag in $tags) {
+              $numberPart = $tag.Split('-')[-1]
+              if ($numberPart -match '^\d{2}$') {
+                  $currentNumber = [int]$numberPart
+                  $maxNumber = [Math]::Max($maxNumber, $currentNumber)
+              }
+          }
+          
+          # 生成新序号
+          $nextNumber = $maxNumber + 1
+          $newTag = "{0}-{1:D2}" -f $datePart, $nextNumber
+          echo "new_tag=$newTag" >> $env:GITHUB_OUTPUT
+          echo "TAG=$newTag" >> $env:GITHUB_ENV
       - name: Create Release
         uses: softprops/action-gh-release@a74c6b72af54cfa997e81df42d94703d6313a2d0
         with:
           files: ./src/Releases/**
+          tag_name: ${{ env.TAG }}  # 使用生成的标签
           name: Release
           body_path: RELEASE.md

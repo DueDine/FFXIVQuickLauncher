@@ -207,16 +207,9 @@ namespace XIVLauncher.Common.Dalamud
             return true;
         }
 
+        // always return true
         public static bool CanRunDalamud(DirectoryInfo gamePath)
         {
-            using var client = new WebClient();
-
-            var versionInfoJson = client.DownloadString(REMOTE_BASE);
-            var remoteVersionInfo = JsonConvert.DeserializeObject<DalamudVersionInfo>(versionInfoJson);
-
-            if (Repository.Ffxiv.GetVer(gamePath) != remoteVersionInfo.SupportedGameVer)
-                return false;
-
             return true;
         }
     }
