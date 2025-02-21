@@ -107,12 +107,7 @@ namespace XIVLauncher.Windows
             if (EnvironmentSettings.IsDisableUpdates)
 #endif
             {
-                Title += " - UNSUPPORTED VERSION - NO UPDATES - COULD DO BAD THINGS";
             }
-
-#if DEBUG
-            Title += " - Debugging";
-#endif
 
             if (EnvironmentSettings.IsWine)
                 Title += " - Wine on Linux";

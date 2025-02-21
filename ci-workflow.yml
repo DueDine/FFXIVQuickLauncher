@@ -1,14 +1,20 @@
 name: Build XIVLauncher
-on: [push, pull_request]
-concurrency: build_xl
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-release:
     name: Build Release on Windows
-    if: startsWith(github.ref, 'refs/tags/')
     runs-on: windows-2022
+    permissions:
+      id-token: write
+      contents: write
+      attestations: write
     steps:
-      #      - uses: nadock/verified_commits_check@f9b330e987c2e7121dfc0230e65cb5751ee5fac9
       - uses: actions/checkout@v1
       - name: Initialize Submodules
         run: git submodule update --init --recursive
@@ -26,91 +32,58 @@ jobs:
           ($env:REPO_NAME) >> VERSION
           ($env:BRANCH) >> VERSION
           ($env:COMMIT) >> VERSION
-      - name: Build DotNet4 for Release
+      - name: Build Release
         run: |
           cd "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\"
-           .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=Release
-      - name: Build Squirrel Release
-        id: build-squirrel
+          .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=Release
+      - name: Generate Hashes File
         run: |
-          cd src\
-          $releases = Invoke-WebRequest -Uri 'https://api.github.com/repos/ottercorp/FFXIVQuickLauncher/releases'
-          $current = ConvertFrom-Json -InputObject $releases.Content | Select-Object -First 1
-          $refver = $env:GITHUB_REF -replace '.*/'
-          echo "::set-output name=version::$refver"
-          nuget pack .\XIVLauncher.nuspec -properties version=$refver
-          mkdir Releases
-          cp .\XIVLauncher\Resources\CHANGELOG.txt .\Releases\
-          $release_file = $current.assets | Where-Object -Property name -Value RELEASES -EQ
-          Invoke-WebRequest -Uri $release_file.browser_download_url -OutFile .\Releases\RELEASES
-          $delta_file = $current.assets | Where-Object -Property name -Value "*delta.nupkg" -Like
-          try
-          {
-            Invoke-WebRequest -Uri $delta_file.browser_download_url -OutFile ".\Releases\$($delta_file.name)"
+          .\scripts\CreateHashList.ps1 .\src\bin\win-x64
+          # 移动哈希文件到构建目录
+          Move-Item -Path .\src\bin\win-x64\hashes.txt -Destination .\src\Releases\
+      - name: Generate release tag (UTC+8)
+        id: generate-tag
+        run: |
+          $tzId = "China Standard Time"
+          $utcNow = [DateTime]::UtcNow
+          $cstTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($utcNow, $tzId)
+          
+          $datePart = $cstTime.ToString("yy-MM-dd")
+          
+          git fetch --tags
+          $tags = git tag --list "$datePart-*"
+          
+          $maxNumber = 0
+          foreach ($tag in $tags) {
+              $numberPart = $tag.Split('-')[-1]
+              if ($numberPart -match '^\d{2}$') {
+                  $currentNumber = [int]$numberPart
+                  $maxNumber = [Math]::Max($maxNumber, $currentNumber)
+              }
           }
-          catch
-          {
-          }
-          $full_file = $current.assets | Where-Object -Property name -Value "*full.nupkg" -Like
-          Invoke-WebRequest -Uri $full_file.browser_download_url -OutFile ".\Releases\$($full_file.name)"
-          $setup_file = $current.assets | Where-Object -Property name -Value "Setup.exe" -EQ
-          Invoke-WebRequest -Uri $setup_file.browser_download_url -OutFile .\Releases\Setup.exe
-          Copy-Item -Path $Env:GITHUB_WORKSPACE\misc\packer\Setup.exe  -Destination ~\.nuget\packages\squirrel.windows\1.9.1\tools\ -Force
-          Copy-Item -Path $Env:GITHUB_WORKSPACE\misc\packer\Update.exe -Destination ~\.nuget\packages\squirrel.windows\1.9.1\tools\ -Force
-           ~\.nuget\packages\squirrel.windows\1.9.1\tools\Squirrel.exe --no-msi --releasify .\XIVLauncherCN.$refver.nupkg --setupIcon=.\XIVLauncher\Resources\dalamud_icon.ico --icon=.\XIVLauncher\Resources\dalamud_icon.ico
-          Start-Sleep -s 60
-          try
-          {
-            rm ".\Releases\$($delta_file.name)"
-          }
-          catch
-          {
-          }
-          rm ".\Releases\$($full_file.name)"
+          
+          $nextNumber = $maxNumber + 1
+          $newTag = "{0}-{1:D2}" -f $datePart, $nextNumber
+          echo "new_tag=$newTag" >> $env:GITHUB_OUTPUT
+          echo "TAG=$newTag" >> $env:GITHUB_ENV
+      - name: Prepare Release Notes
+        run: |
+          @"
+          Automated Release
+          Build Date: ${{ env.TAG }} (UTC+8)
+          Commit: ${{ github.sha }}
+          Branch: ${{ github.ref_name }}
+          "@ | Out-File -FilePath RELEASE.md -Encoding utf8
       - name: Create Release
-        uses: softprops/action-gh-release@91409e712cf565ce9eff10c87a8d1b11b81757ae
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@a74c6b72af54cfa997e81df42d94703d6313a2d0
         with:
-          files: src\Releases\**
-          name: Release ${{ steps.build-squirrel.outputs.version }}
+          files: |
+            ./src/Releases/**
+            ./src/bin/win-x64/*.exe
+            ./src/bin/win-x64/*.dll
+            ./src/bin/win-x64/*.json
+            ./src/bin/win-x64/*.7z
+            ./src/bin/win-x64/*.nupkg
+          tag_name: ${{ env.TAG }}
+          name: "Release ${{ env.TAG }}"
           body_path: RELEASE.md
-          prerelease: true
-      - name: VirusTotal Scan
-        uses: crazy-max/ghaction-virustotal@a3f74cfd584b0658320aec5e94ab6a8d16dca05f
-        with:
-          vt_api_key: ${{ secrets.VT_API_KEY }}
-          files: ./src/Releases/*.exe
-
-  build:
-    name: Build on Windows
-    runs-on: windows-2022
-    if: "!startsWith(github.ref, 'refs/tags/')"
-    steps:
-      - uses: actions/checkout@v1
-      - name: Initialize Submodules
-        run: git submodule update --init --recursive
-
-      - name: Restore Nuget Packages
-        run: |
-          cd .\src\
-          dotnet restore
-          cd ..
-      - name: Define VERSION
-        run: |
-          $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
-          $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
-          $env:BRANCH = $env:GITHUB_REF -replace '.*/'
-
-          ($env:REPO_NAME) >> VERSION
-          ($env:BRANCH) >> VERSION
-          ($env:COMMIT) >> VERSION
-      - name: Build DotNet4 Master
-        run: |
-          cd "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\"
-           .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=ReleaseNoUpdate
-      - name: Upload artifact
-        uses: actions/upload-artifact@master
-        with:
-          name: xivlauncher-artifact
-          path: src\bin\

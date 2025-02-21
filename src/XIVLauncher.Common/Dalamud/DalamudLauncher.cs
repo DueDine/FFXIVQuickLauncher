@@ -72,14 +72,14 @@ namespace XIVLauncher.Common.Dalamud
             if (!this.updater.Runner.Exists)
                 throw new DalamudRunnerException("Runner did not exist.");
 
-            if (!ReCheckVersion(gamePath))
-            {
-                this.updater.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Unavailable);
-                this.updater.ShowOverlay();
-                Log.Error("[HOOKS] ReCheckVersion fail");
-
-                return DalamudInstallState.OutOfDate;
-            }
+            // if (!ReCheckVersion(gamePath))
+            // {
+            //     this.updater.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Unavailable);
+            //     this.updater.ShowOverlay();
+            //     Log.Error("[HOOKS] ReCheckVersion fail");
+            //
+            //     return DalamudInstallState.OutOfDate;
+            // }
 
             return DalamudInstallState.Ok;
         }
@@ -137,7 +137,7 @@ namespace XIVLauncher.Common.Dalamud
             var dalamudProcess = Process.Start(psi);
             while (!dalamudProcess.StandardOutput.EndOfStream)
             {
-                string line = dalamudProcess.StandardOutput.ReadLine();
+                var line = dalamudProcess.StandardOutput.ReadLine();
                 Log.Information(line);
             }
         }
@@ -198,19 +198,12 @@ namespace XIVLauncher.Common.Dalamud
             if (this.updater.RunnerOverride != null)
                 return true;
 
-            var info = DalamudVersionInfo.Load(new FileInfo(Path.Combine(this.updater.Runner.DirectoryName!,
-                "version.json")));
+            var info = DalamudVersionInfo.Load(new FileInfo(Path.Combine(this.updater.Runner.DirectoryName!, "version.json")));
 
-            if (Repository.Ffxiv.GetVer(gamePath) != info.SupportedGameVer)
-                return false;
-
-            return true;
+            return Repository.Ffxiv.GetVer(gamePath) == info.SupportedGameVer;
         }
 
         // always return true
-        public static bool CanRunDalamud(DirectoryInfo gamePath)
-        {
-            return true;
-        }
+        public static bool CanRunDalamud(DirectoryInfo gamePath) => true;
     }
 }
