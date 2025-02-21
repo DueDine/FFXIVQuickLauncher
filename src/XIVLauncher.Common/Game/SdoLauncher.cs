@@ -668,7 +668,6 @@ namespace XIVLauncher.Common.Game
             var exePath = Path.Combine(gamePath.FullName, "game", "ffxiv_dx11.exe");
 
             var environment = new Dictionary<string, string>();
-
             var argumentBuilder = new ArgumentBuilder()
                                   .Append("-AppID", "100001900")
                                   .Append("-AreaID", areaId)
