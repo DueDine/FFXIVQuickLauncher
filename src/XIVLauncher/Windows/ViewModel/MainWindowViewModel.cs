@@ -326,7 +326,7 @@ namespace XIVLauncher.Windows.ViewModel
             //}
             //PersistAccount(username, password);
 
-            //if (!doingAutoLogin) App.Settings.AutologinEnabled = IsAutoLogin;
+            if (!doingAutoLogin) App.Settings.AutologinEnabled = IsAutoLogin;
             App.Settings.FastLogin = IsFastLogin;
 
             var finalLoginType = loginType;

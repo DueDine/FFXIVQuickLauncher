@@ -599,7 +599,7 @@ namespace XIVLauncher.Windows
             Model.Username = account.UserName;
             //Model.IsOtp = account.UseOtp;
             //Model.IsSteam = account.UseSteamServiceAccount;
-            Model.IsAutoLogin = account.AutoLogin;
+            Model.IsFastLogin = account.AutoLogin;
             Model.Area = _sdoAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
             LoginPassword.Password = string.Empty;
             if (saveAsCurrent)
