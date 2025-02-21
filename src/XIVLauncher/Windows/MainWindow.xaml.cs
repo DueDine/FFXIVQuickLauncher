@@ -719,6 +719,7 @@ namespace XIVLauncher.Windows
 
             FastLoginCheckBox.Visibility = Visibility.Visible;
             ReadWeGameInfoCheckBox.Visibility = Visibility.Collapsed;
+            FastLoginCheckBox.Content = "快速登录";
 
             HintAssist.SetHint(this.LoginUsername, "盛趣账号");
             HintAssist.SetHint(this.LoginPassword, "密码");
@@ -734,7 +735,13 @@ namespace XIVLauncher.Windows
                 case LoginType.SdoStatic:
                     LoginUsername.Visibility = Visibility.Visible;
                     LoginPassword.Visibility = Visibility.Visible;
-                    FastLoginCheckBox.Visibility = Visibility.Collapsed;
+                    FastLoginCheckBox.Content = "保存密码";
+                    //FastLoginCheckBox.Visibility = Visibility.Collapsed;
+                    var savedAccount = App.AccountManager.Accounts.FirstOrDefault(x => x.UserName == LoginUsername.Text);
+                    if (savedAccount != null)
+                    {
+                        LoginPassword.Password = savedAccount.Password;
+                    }
                     break;
                 case LoginType.WeGameToken:
                     LoginPassword.Visibility = Visibility.Visible;
