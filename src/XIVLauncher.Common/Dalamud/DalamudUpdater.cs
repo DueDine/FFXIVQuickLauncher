@@ -196,19 +196,20 @@ public class DalamudUpdater
         var versionInfoJson = JsonConvert.SerializeObject(versionInfoRelease);
         var onlineHash      = await this.GetLatestReleaseHashAsync();
 
-        var addonPath          = new DirectoryInfo(Path.Combine(this.addonDirectory.FullName, "Hooks"));
-        var currentVersionPath = new DirectoryInfo(Path.Combine(addonPath.FullName,           versionInfoRelease.AssemblyVersion));
-        // var currentVersionRuntimePath = new DirectoryInfo(Path.Combine(addonPath.FullName,           versionInfoRelease.AssemblyVersion, "runtimes"));
-        //
-        // var runtimePaths = new DirectoryInfo[]
-        // {
-        //     new(Path.Combine(this.Runtime.FullName, "host",   "fxr",                          versionInfoRelease.RuntimeVersion)),
-        //     new(Path.Combine(this.Runtime.FullName, "shared", "Microsoft.NETCore.App",        versionInfoRelease.RuntimeVersion)),
-        //     new(Path.Combine(this.Runtime.FullName, "shared", "Microsoft.WindowsDesktop.App", versionInfoRelease.RuntimeVersion))
-        // };
+        var addonPath                 = new DirectoryInfo(Path.Combine(this.addonDirectory.FullName, "Hooks"));
+        var currentVersionPath        = new DirectoryInfo(Path.Combine(addonPath.FullName,           versionInfoRelease.AssemblyVersion));
+        var currentVersionRuntimePath = new DirectoryInfo(Path.Combine(addonPath.FullName,           versionInfoRelease.AssemblyVersion, "runtimes"));
+
+        var runtimePaths = new DirectoryInfo[]
+        {
+            new(Path.Combine(this.Runtime.FullName, "host",   "fxr",                          versionInfoRelease.RuntimeVersion)),
+            new(Path.Combine(this.Runtime.FullName, "shared", "Microsoft.NETCore.App",        versionInfoRelease.RuntimeVersion)),
+            new(Path.Combine(this.Runtime.FullName, "shared", "Microsoft.WindowsDesktop.App", versionInfoRelease.RuntimeVersion))
+        };
 
         // 检查当前版本是否存在且完整
-        if (true)
+        if (!currentVersionPath.Exists || currentVersionPath.GetFiles() is not { Length: > 0 } ||
+            !IsIntegrity(addonPath, onlineHash))
         {
             Log.Information("[DUPDATE] 未找到有效版本，开始重新下载");
             this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud); // 更新UI进度显示
@@ -229,7 +230,6 @@ public class DalamudUpdater
         }
 
         // 处理运行时
-        /*
         if (versionInfoRelease.RuntimeRequired || settings.DoDalamudRuntime)
         {
             Log.Information("[DUPDATE] 正在准备.NET运行时 {0}", versionInfoRelease.RuntimeVersion);
@@ -265,7 +265,6 @@ public class DalamudUpdater
                 catch (Exception ex) { throw new DalamudIntegrityException("无法确保运行时完整性", ex); }
             }
         }
-        */
 
         // 处理资源文件
         Log.Verbose("[DUPDATE] 正在验证资源文件...");
@@ -293,6 +292,24 @@ public class DalamudUpdater
         this.ReportOverlayProgress(null, 0, null);
     }
 
+    private string GetLocalRuntimeVersion(FileInfo versionFile)
+    {
+        // This is the version we first shipped. We didn't write out a version file, so we can't check it.
+        var localVersion = "5.0.6";
+
+        try
+        {
+            if (versionFile.Exists)
+                localVersion = File.ReadAllText(versionFile.FullName);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[DUPDATE] Could not read local runtime version.");
+        }
+
+        return localVersion;
+    }
+    
     private static bool CanRead(FileInfo info)
     {
         try

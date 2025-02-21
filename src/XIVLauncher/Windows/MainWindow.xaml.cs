@@ -100,7 +100,7 @@ namespace XIVLauncher.Windows
 #if !XL_NOAUTOUPDATE
             Title += " v" + AppUtil.GetAssemblyVersion();
 #else
-            Title += " " + AppUtil.GetGitHash();
+            Title += " v" + AppUtil.GetAssemblyVersion();
 #endif
 
 #if !XL_NOAUTOUPDATE
