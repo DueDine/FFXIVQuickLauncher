@@ -856,10 +856,6 @@ namespace XIVLauncher.Windows.ViewModel
 
         private async Task<bool> TryProcessLoginResult(Launcher.LoginResult loginResult, bool isSteam, AfterLoginAction action)
         {
-            if (loginResult.OauthLogin.SessionId.IsNullOrEmpty() || loginResult.OauthLogin.SndaId.IsNullOrEmpty()) {
-                CustomMessageBox.Show("SID或SNDAID为空", "Error", MessageBoxButton.OK, MessageBoxImage.Error, showOfficialLauncher: true, parentWindow: _window);
-                return false;
-            }
             if (loginResult.State == Launcher.LoginState.NoService)
             {
                 CustomMessageBox.Show(
@@ -983,6 +979,13 @@ namespace XIVLauncher.Windows.ViewModel
 
                 try
                 {
+                    if (loginResult.OauthLogin.SessionId.IsNullOrEmpty() || loginResult.OauthLogin.SndaId.IsNullOrEmpty())
+                    {
+                        Log.Error($"SID或SNDAID为空，取消登录");
+                        CustomMessageBox.Show("SID或SNDAID为空", "Error", MessageBoxButton.OK, MessageBoxImage.Error, showOfficialLauncher: true, parentWindow: _window);
+                        return false;
+                    }
+
                     using var process = await StartGameAndAddon(
                         loginResult,
                         isSteam,
@@ -2026,6 +2029,7 @@ namespace XIVLauncher.Windows.ViewModel
             set
             {
                 _area = value;
+                Log.Debug($"Area Change:{_area} -> {value}");
                 OnPropertyChanged(nameof(Area));
             }
         }

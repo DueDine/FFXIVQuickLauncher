@@ -131,14 +131,6 @@ namespace XIVLauncher.Windows
                 _sdoAreas = new SdoArea[1] { new SdoArea { AreaName = "获取大区失败", Areaid = "-1" } };
                 throw ex;
             }
-            finally
-            {
-                Dispatcher.BeginInvoke(new Action(async () =>
-                {
-                    ServerSelection.ItemsSource = _sdoAreas;
-                    ServerSelection.SelectedIndex = 0;
-                }));
-            }
         }
 
         private async Task SetupHeadlines()
@@ -382,8 +374,14 @@ namespace XIVLauncher.Windows
             Task.Run(async () =>
             {
                 await SetupServers();
-                if (savedAccount != null)
-                    Dispatcher.Invoke(() => { SwitchAccount(savedAccount, false); });
+                Dispatcher.Invoke(() =>
+                {
+                    ServerSelection.ItemsSource = _sdoAreas;
+                    ServerSelection.SelectedIndex = 0;
+                    if (savedAccount != null)
+                        SwitchAccount(savedAccount, false); ;
+                });
+
                 await SetupHeadlines();
                 Troubleshooting.LogTroubleshooting(); ;
             });
