@@ -14,12 +14,12 @@ jobs:
     permissions:
       contents: write
     env:
-      TZ: Asia/Shanghai  # 设置时区变量
+      TZ: Asia/Shanghai
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # 需要完整提交历史
+          fetch-depth: 0
           fetch-tags: true
 
       - name: Generate Release Tag
@@ -29,14 +29,9 @@ jobs:
           $tzId = "China Standard Time"
           $utcNow = [DateTime]::UtcNow
           $cstTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($utcNow, $tzId)
-          
-          # 生成日期部分 (yy-MM-dd)
           $datePart = $cstTime.ToString("yy-MM-dd")
-          
-          # 获取当天所有标签
           $tags = git tag --list "$datePart-*"
           
-          # 查找最大序号
           $maxNumber = 0
           foreach ($tag in $tags) {
               $numberPart = $tag.Split('-')[-1]
@@ -46,7 +41,6 @@ jobs:
               }
           }
           
-          # 生成新序号 (自动补零)
           $nextNumber = $maxNumber + 1
           $newTag = "{0}-{1:D2}" -f $datePart, $nextNumber
           Write-Output "new_tag=$newTag" >> $env:GITHUB_OUTPUT
@@ -69,15 +63,20 @@ jobs:
           cd ./src/
           dotnet restore
           cd "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\"
-          .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=ReleaseNoUpdate
+          .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=Release
 
-      - name: Package Artifacts
+      - name: Generate Hashes File
         shell: pwsh
         run: |
-          $tag = '${{ steps.generate-tag.outputs.new_tag }}'
-          mkdir -p ./artifacts/$tag
-          Copy-Item -Path ./src/bin/win-x64/* -Destination ./artifacts/$tag -Recurse
-          Compress-Archive -Path ./artifacts/$tag/* -DestinationPath ./artifacts/XIVLauncher-$tag.zip
+          .\scripts\CreateHashList.ps1 ./src/bin/win-x64
+          Copy-Item -Path ./src/bin/win-x64/hashes.json -Destination ./artifacts/
+
+      - name: Package 7z Archive
+        shell: pwsh
+        run: |
+          mkdir -p ./artifacts
+          $buildFiles = Get-ChildItem -Path ./src/bin/win-x64
+          7z a -t7z -mx=9 ./artifacts/latest.7z $buildFiles
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -87,4 +86,7 @@ jobs:
           tag_name: ${{ steps.generate-tag.outputs.new_tag }}
           name: "Release ${{ steps.generate-tag.outputs.new_tag }}"
           files: |
-            ./artifacts/XIVLauncher-${{ steps.generate-tag.outputs.new_tag }}.zip
+            ./artifacts/latest.7z
+            ./artifacts/hashes.json
+          draft: false
+          prerelease: false
