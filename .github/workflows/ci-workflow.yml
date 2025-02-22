@@ -1,55 +1,39 @@
-name: Build XIVLauncher
+name: Auto Build & Release
+
 on:
   workflow_dispatch:
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: build-release-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   build-release:
-    name: Build Release on Windows
+    name: Build and Release
     runs-on: windows-2022
     permissions:
-      id-token: write
-      contents: write # Must be 'write' to create a release
-      attestations: write
-    steps:
-      - uses: actions/checkout@v1
-      - name: Initialize Submodules
-        run: git submodule update --init --recursive
-      - name: Restore Nuget Packages
-        run: |
-          cd .\src\
-          dotnet restore
-          cd ..
-      - name: Define VERSION
-        run: |
-          $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
-          $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
-          $env:BRANCH = $env:GITHUB_REF -replace '.*/'
+      contents: write
+    env:
+      TZ: Asia/Shanghai  # 设置时区变量
 
-          ($env:REPO_NAME) >> VERSION
-          ($env:BRANCH) >> VERSION
-          ($env:COMMIT) >> VERSION
-      - name: Build Release
-        run: |
-          cd "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\"
-          .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=Release
-      - name: Generate Hashes File
-        run: .\scripts\CreateHashList.ps1 .\src\bin\win-x64
-      - name: Generate release tag (UTC+8)
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 需要完整提交历史
+          fetch-tags: true
+
+      - name: Generate Release Tag
         id: generate-tag
+        shell: pwsh
         run: |
           $tzId = "China Standard Time"
           $utcNow = [DateTime]::UtcNow
           $cstTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($utcNow, $tzId)
           
-          # 东八区日期部分
+          # 生成日期部分 (yy-MM-dd)
           $datePart = $cstTime.ToString("yy-MM-dd")
           
           # 获取当天所有标签
-          git fetch --tags
           $tags = git tag --list "$datePart-*"
           
           # 查找最大序号
@@ -62,15 +46,45 @@ jobs:
               }
           }
           
-          # 生成新序号
+          # 生成新序号 (自动补零)
           $nextNumber = $maxNumber + 1
           $newTag = "{0}-{1:D2}" -f $datePart, $nextNumber
-          echo "new_tag=$newTag" >> $env:GITHUB_OUTPUT
-          echo "TAG=$newTag" >> $env:GITHUB_ENV
-      - name: Create Release
-        uses: softprops/action-gh-release@a74c6b72af54cfa997e81df42d94703d6313a2d0
+          Write-Output "new_tag=$newTag" >> $env:GITHUB_OUTPUT
+
+      - name: Create Git Tag
+        uses: actions/github-script@v6
         with:
-          files: ./src/Releases/**
-          tag_name: ${{ env.TAG }}  # 使用生成的标签
-          name: Release
-          body_path: RELEASE.md
+          script: |
+            const newTag = '${{ steps.generate-tag.outputs.new_tag }}'
+            await github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: `refs/tags/${newTag}`,
+              sha: context.sha
+            })
+
+      - name: Build Artifacts
+        run: |
+          git submodule update --init --recursive
+          cd ./src/
+          dotnet restore
+          cd "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\"
+          .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=ReleaseNoUpdate
+
+      - name: Package Artifacts
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.generate-tag.outputs.new_tag }}'
+          mkdir -p ./artifacts/$tag
+          Copy-Item -Path ./src/bin/win-x64/* -Destination ./artifacts/$tag -Recurse
+          Compress-Archive -Path ./artifacts/$tag/* -DestinationPath ./artifacts/XIVLauncher-$tag.zip
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.generate-tag.outputs.new_tag }}
+          name: "Release ${{ steps.generate-tag.outputs.new_tag }}"
+          files: |
+            ./artifacts/XIVLauncher-${{ steps.generate-tag.outputs.new_tag }}.zip
