@@ -101,7 +101,7 @@ public class DalamudUpdater
 
     public void Run(bool overrideForceProxy = false)
     {
-        Log.Information("[DUPDATE] Starting... (forceProxy: {ForceProxy})", overrideForceProxy);
+        Log.Information("[DUPDATE] 启动中... (是否强制使用代理: {ForceProxy})", overrideForceProxy);
         this.State = DownloadState.Unknown;
 
         this.forceProxy = overrideForceProxy;
@@ -122,7 +122,7 @@ public class DalamudUpdater
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "[DUPDATE] Update failed, try {TryCnt}/{MaxTries}...", tries, MAX_TRIES);
+                    Log.Error(ex, "[DUPDATE] 更新失败, 重试 {TryCnt}/{MaxTries}...", tries, MAX_TRIES);
                     this.EnsurementException = ex;
                     this.forceProxy          = false;
                 }
@@ -132,54 +132,20 @@ public class DalamudUpdater
         });
     }
 
-    private static string GetBetaTrackName(DalamudSettings settings)
-    {
-        return string.IsNullOrEmpty(settings.DalamudBetaKind) ? "staging" : settings.DalamudBetaKind;
-    }
-
-    private async Task<(DalamudVersionInfo release, DalamudVersionInfo? staging)> GetVersionInfo(DalamudSettings settings)
+    private async Task<DalamudVersionInfo?> GetVersionInfo()
     {
         using var client = new HttpClient();
         client.Timeout = this.defaultTimeout;
 
-        client.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue
-        {
-            NoCache = true
-        };
+        client.DefaultRequestHeaders.CacheControl = new CacheControlHeaderValue { NoCache = true };
         client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
 
-        var versionInfoJsonRelease = await client.GetStringAsync(DalamudLauncher.REMOTE_BASE + $"release&bucket={this.RolloutBucket}").ConfigureAwait(false);
+        var versionInfoJsonRelease = 
+            await client.GetStringAsync($"{DalamudLauncher.REMOTE_BASE}release&bucket={this.RolloutBucket}").ConfigureAwait(false);
 
         var versionInfoRelease = JsonConvert.DeserializeObject<DalamudVersionInfo>(versionInfoJsonRelease);
 
-        DalamudVersionInfo? versionInfoStaging = null;
-
-        if (!string.IsNullOrEmpty(settings.DalamudBetaKey))
-        {
-            var versionInfoJsonStaging = await client.GetAsync(DalamudLauncher.REMOTE_BASE + GetBetaTrackName(settings)).ConfigureAwait(false);
-
-            if (versionInfoJsonStaging.StatusCode != HttpStatusCode.BadRequest)
-                versionInfoStaging = JsonConvert.DeserializeObject<DalamudVersionInfo>(await versionInfoJsonStaging.Content.ReadAsStringAsync().ConfigureAwait(false));
-
-            // 定义要发送的数据
-            var data = new { code = settings.DalamudBetaKey };
-
-            // 将数据序列化为 JSON 字符串
-            var jsonData = JsonConvert.SerializeObject(data);
-
-            var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
-
-            var respond = await client.PostAsync("https://aonyx.ffxiv.wang/Dalamud/Check/StgCode", content).ConfigureAwait(false);
-
-            if (!respond.IsSuccessStatusCode)
-            {
-                versionInfoStaging = null;
-                Log.Error("[GetVersionInfo] BetaKey is not correct.");
-            }
-            else versionInfoStaging.Key = settings.DalamudBetaKey;
-        }
-
-        return (versionInfoRelease, versionInfoStaging);
+        return versionInfoRelease;
     }
 
     /// <summary>
@@ -192,13 +158,12 @@ public class DalamudUpdater
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
         // 还是从 ottercorp 那里获取版本信息用于运行时下载
-        var (versionInfoRelease, _) = await this.GetVersionInfo(settings).ConfigureAwait(false);
+        var versionInfoRelease = await this.GetVersionInfo().ConfigureAwait(false);
         var versionInfoJson = JsonConvert.SerializeObject(versionInfoRelease);
         var onlineHash      = await this.GetLatestReleaseHashAsync();
 
         var addonPath                 = new DirectoryInfo(Path.Combine(this.addonDirectory.FullName, "Hooks"));
         var currentVersionPath        = new DirectoryInfo(Path.Combine(addonPath.FullName,           versionInfoRelease.AssemblyVersion));
-        var currentVersionRuntimePath = new DirectoryInfo(Path.Combine(addonPath.FullName,           versionInfoRelease.AssemblyVersion, "runtimes"));
 
         var runtimePaths = new DirectoryInfo[]
         {
@@ -212,15 +177,15 @@ public class DalamudUpdater
             !IsIntegrity(addonPath, onlineHash))
         {
             Log.Information("[DUPDATE] 未找到有效版本，开始重新下载");
-            this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud); // 更新UI进度显示
+            this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud); // 更新 UI 进度显示
 
             try
             {
-                // 下载Dalamud核心组件
+                // 下载 Dalamud
                 await this.DownloadDalamud(currentVersionPath).ConfigureAwait(true);
                 CleanUpOld(addonPath, versionInfoRelease.AssemblyVersion); // 清理旧版本
 
-                // 重置UID缓存（当核心组件更新后可能需要清理）
+                // 重置UID缓存
                 this.cache?.Reset();
             }
             catch (Exception ex)
@@ -232,7 +197,7 @@ public class DalamudUpdater
         // 处理运行时
         if (versionInfoRelease.RuntimeRequired || settings.DoDalamudRuntime)
         {
-            Log.Information("[DUPDATE] 正在准备.NET运行时 {0}", versionInfoRelease.RuntimeVersion);
+            Log.Information("[DUPDATE] 正在准备 .NET 运行时 {0}", versionInfoRelease.RuntimeVersion);
 
             var versionFile  = new FileInfo(Path.Combine(this.Runtime.FullName, "version"));
             var localVersion = this.GetLocalRuntimeVersion(versionFile);
@@ -262,7 +227,10 @@ public class DalamudUpdater
                     await this.DownloadRuntime(this.Runtime, versionInfoRelease.RuntimeVersion).ConfigureAwait(false);
                     File.WriteAllText(versionFile.FullName, versionInfoRelease.RuntimeVersion);
                 }
-                catch (Exception ex) { throw new DalamudIntegrityException("无法确保运行时完整性", ex); }
+                catch (Exception ex)
+                {
+                    throw new DalamudIntegrityException("无法确保运行时完整性", ex);
+                }
             }
         }
 
@@ -278,7 +246,10 @@ public class DalamudUpdater
             this.AssetDirectory = assetResult.AssetDir; // 更新资源目录路径
             assetVer            = assetResult.Version;  // 获取资源版本
         }
-        catch (Exception ex) { throw new DalamudIntegrityException("资源文件验证失败", ex); }
+        catch (Exception ex)
+        {
+            throw new DalamudIntegrityException("资源文件验证失败", ex);
+        }
 
         if (!IsIntegrity(currentVersionPath, onlineHash)) throw new DalamudIntegrityException("完整性验证最终失败");
 

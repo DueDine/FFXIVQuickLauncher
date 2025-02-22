@@ -34,21 +34,6 @@ namespace XIVLauncher
 
         public static Lease? UpdateLease { get; private set; }
 
-#pragma warning disable CS8618
-        [SuppressMessage("ReSharper", "UnusedAutoPropertyAccessor.Local")]
-        public class ErrorNewsData
-        {
-            [JsonPropertyName("until")]
-            public uint ShowUntil { get; set; }
-
-            [JsonPropertyName("message")]
-            public string Message { get; set; }
-
-            [JsonPropertyName("isError")]
-            public bool IsError { get; set; }
-        }
-#pragma warning restore CS8618
-
         [Flags]
         public enum LeaseFeatureFlags
         {
@@ -61,13 +46,9 @@ namespace XIVLauncher
         public class Lease
         {
             public bool Success { get; set; }
-
             public string? Message { get; set; }
-
             public string? CutOffBootver { get; set; }
-
             public string FrontierUrl { get; set; }
-
             public LeaseFeatureFlags Flags { get; set; }
 
             public string ReleasesList { get; set; }
@@ -75,128 +56,6 @@ namespace XIVLauncher
             public DateTime? ValidUntil { get; set; }
         }
 #pragma warning restore CS8618
-
-        private const string FAKE_URL_PREFIX = "https://example.com/";
-
-        // private class FakeSquirrelFileDownloader : IFileDownloader
-        // {
-        //     private readonly Lease lease;
-        //     private readonly HttpClient client = new();
-        //
-        //     public FakeSquirrelFileDownloader(Lease lease, bool prerelease)
-        //     {
-        //         this.lease = lease;
-        //         client.DefaultRequestHeaders.AddWithoutValidation("X-XL-Track", prerelease ? TRACK_PRERELEASE : TRACK_RELEASE);
-        //     }
-        //
-        //     public async Task DownloadFile(string url, string targetFile, Action<int> progress)
-        //     {
-        //         Log.Verbose("FakeSquirrel: DownloadFile from {Url} to {Target}", url, targetFile);
-        //         var fileNeeded = url.Substring(FAKE_URL_PREFIX.Length);
-        //
-        //         using var response = await client.GetAsync($"{LEASE_FILE_URL}/{fileNeeded}", HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
-        //         response.EnsureSuccessStatusCode();
-        //         using var contentStream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
-        //
-        //         using Stream fileStream = File.Open(targetFile, FileMode.Create);
-        //         await contentStream.CopyToAsync(fileStream).ConfigureAwait(false);
-        //         fileStream.Close();
-        //
-        //         Log.Verbose("FakeSquirrel: OK, downloaded {NumBytes}b for {File}", response.Content.Headers.ContentLength, fileNeeded);
-        //     }
-        //
-        //     public Task<byte[]> DownloadUrl(string url)
-        //     {
-        //         Log.Verbose("FakeSquirrel: DownloadUrl from {Url}", url);
-        //         var fileNeeded = url.Substring(FAKE_URL_PREFIX.Length);
-        //
-        //         if (fileNeeded.StartsWith("RELEASES", StringComparison.Ordinal))
-        //             return Task.FromResult(Encoding.UTF8.GetBytes(lease.ReleasesList));
-        //
-        //         throw new ArgumentException($"DownloadUrl called for unknown file: {url}");
-        //     }
-        // }
-
-        public class LeaseAcquisitionException : Exception
-        {
-            public LeaseAcquisitionException(string message)
-                : base($"Couldn't acquire lease: {message}")
-            {
-            }
-        }
-
-        private class UpdateResult
-        {
-            public UpdateResult(UpdateManager manager, Lease lease)
-            {
-                Manager = manager;
-                Lease = lease;
-            }
-
-            public UpdateManager Manager { get; private set; }
-            public Lease Lease { get; private set; }
-        }
-
-        // private static async Task<UpdateResult> LeaseUpdateManager(bool prerelease)
-        // {
-        //     using var client = new HttpClient
-        //     {
-        //         DefaultRequestHeaders =
-        //         {
-        //             UserAgent = { new ProductInfoHeaderValue("XIVLauncherCN", AppUtil.GetGitHash()) }
-        //         }
-        //     };
-        //     client.DefaultRequestHeaders.AddWithoutValidation("X-XL-Track", prerelease ? TRACK_PRERELEASE : TRACK_RELEASE);
-        //     client.DefaultRequestHeaders.AddWithoutValidation("X-XL-LV", "0");
-        //     client.DefaultRequestHeaders.AddWithoutValidation("X-XL-HaveVersion", AppUtil.GetAssemblyVersion());
-        //     client.DefaultRequestHeaders.AddWithoutValidation("X-XL-HaveAddon", App.Settings.InGameAddonEnabled ? "yes" : "no");
-        //     client.DefaultRequestHeaders.AddWithoutValidation("X-XL-FirstStart", App.Settings.VersionUpgradeLevel == 0 ? "yes" : "no");
-        //     client.DefaultRequestHeaders.AddWithoutValidation("X-XL-HaveWine", EnvironmentSettings.IsWine ? "yes" : "no");
-        //
-        //     var response = await client.GetAsync(LEASE_META_URL).ConfigureAwait(false);
-        //     response.EnsureSuccessStatusCode();
-        //
-        //     if (response.Headers.TryGetValues("X-XL-Canary", out var values) &&
-        //         values.FirstOrDefault() == "yes")
-        //     {
-        //         Log.Information("Updates: Received canary track lease!");
-        //     }
-        //
-        //     var leaseData = JsonConvert.DeserializeObject<Lease>(await response.Content.ReadAsStringAsync().ConfigureAwait(false));
-        //
-        //     if (!leaseData.Success)
-        //         throw new LeaseAcquisitionException(leaseData.Message!);
-        //
-        //     var fakeDownloader = new FakeSquirrelFileDownloader(leaseData, prerelease);
-        //     var manager = new UpdateManager(FAKE_URL_PREFIX, "XIVLauncherCN", null, fakeDownloader);
-        //
-        //     return new UpdateResult(manager, leaseData);
-        // }
-
-        public static async Task<ErrorNewsData?> GetErrorNews()
-        {
-            ErrorNewsData? newsData = null;
-
-            try
-            {
-                const string NEWS_URL = "https://gist.githubusercontent.com/goaaats/5968072474f79b066a60854d38b95280/raw/xl-news.txt";
-
-                using var client = new HttpClient
-                {
-                    Timeout = TimeSpan.FromSeconds(10),
-                };
-                client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
-
-                var text = await client.GetStringAsync(NEWS_URL).ConfigureAwait(false);
-                newsData = JsonConvert.DeserializeObject<ErrorNewsData>(text);
-            }
-            catch (Exception newsEx)
-            {
-                Log.Error(newsEx, "Could not get error news");
-            }
-
-            return DateTimeOffset.UtcNow.ToUnixTimeSeconds() > newsData?.ShowUntil ? null : newsData;
-        }
 
         public static bool HaveFeatureFlag(LeaseFeatureFlags flag)
         {
