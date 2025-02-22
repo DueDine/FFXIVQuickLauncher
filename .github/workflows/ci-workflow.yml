@@ -68,15 +68,35 @@ jobs:
       - name: Generate Hashes File
         shell: pwsh
         run: |
-          .\scripts\CreateHashList.ps1 ./src/bin/win-x64
-          Copy-Item -Path ./src/bin/win-x64/hashes.json -Destination ./artifacts/
+          $buildDir = "$env:GITHUB_WORKSPACE/src/bin/win-x64"
+          $hashScript = "$env:GITHUB_WORKSPACE/scripts/CreateHashList.ps1"
+          
+          # 执行哈希生成脚本
+          & $hashScript -targetDir $buildDir
+          
+          # 验证文件生成
+          if (-not (Test-Path "$buildDir/hashes.json")) {
+              Write-Error "❌ hashes.json 生成失败"
+              exit 1
+          }
+          
+          # 创建制品目录
+          New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE/artifacts" -Force
+          
+          # 复制哈希文件
+          Copy-Item -Path "$buildDir/hashes.json" -Destination "$env:GITHUB_WORKSPACE/artifacts/"
+          Write-Output "✅ 哈希文件已生成并复制"
 
       - name: Package 7z Archive
         shell: pwsh
         run: |
-          mkdir -p ./artifacts
-          $buildFiles = Get-ChildItem -Path ./src/bin/win-x64
-          7z a -t7z -mx=9 ./artifacts/latest.7z $buildFiles
+          $buildDir = "$env:GITHUB_WORKSPACE/src/bin/win-x64"
+          $artifactDir = "$env:GITHUB_WORKSPACE/artifacts"
+          
+          $filesToCompress = Get-ChildItem -Path $buildDir
+          7z a -t7z -mx=9 "$artifactDir/latest.7z" $filesToCompress.FullName
+          
+          Write-Output "✅ 7z 压缩包已创建"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
@@ -86,7 +106,5 @@ jobs:
           tag_name: ${{ steps.generate-tag.outputs.new_tag }}
           name: "Release ${{ steps.generate-tag.outputs.new_tag }}"
           files: |
-            ./artifacts/latest.7z
-            ./artifacts/hashes.json
-          draft: false
-          prerelease: false
+            artifacts/latest.7z
+            artifacts/hashes.json
