@@ -408,10 +408,7 @@ public class DalamudUpdater
             using var stream = await httpClient.GetStreamAsync(downloadUrl);
             using var md5    = MD5.Create();
 
-            var hashBytes = md5.ComputeHash(stream);
-            return BitConverter.ToString(hashBytes)
-                               .Replace("-", "")
-                               .ToUpperInvariant();
+            return BitConverter.ToString(md5.ComputeHash(stream)).ToUpperInvariant().Replace("-", string.Empty);
         }
         catch (Exception e) { throw new Exception("Error computing file hash: " + e.Message); }
     }
