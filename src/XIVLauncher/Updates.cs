@@ -20,7 +20,7 @@ namespace XIVLauncher
     internal class Updates
     {
         public event Action<bool>? OnUpdateCheckFinished;
-        private const string UPDATE_URL = "https://github.com/DueDine/FFXIVQuickLauncher";
+        private const string UPDATE_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
 
 #if DEV_SERVER
         private const string LEASE_META_URL = "http://localhost:5025/Launcher/GetLease";
