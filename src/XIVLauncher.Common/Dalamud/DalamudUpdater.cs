@@ -159,11 +159,11 @@ public class DalamudUpdater
 
         // 还是从 ottercorp 那里获取版本信息用于运行时下载
         var versionInfoRelease = await this.GetVersionInfo().ConfigureAwait(false);
-        var versionInfoJson = JsonConvert.SerializeObject(versionInfoRelease);
-        var onlineHash      = await this.GetLatestReleaseHashAsync();
+        var versionInfoJson    = JsonConvert.SerializeObject(versionInfoRelease);
+        var onlineHash         = await this.GetLatestReleaseHashAsync();
 
-        var addonPath                 = new DirectoryInfo(Path.Combine(this.addonDirectory.FullName, "Hooks"));
-        var currentVersionPath        = new DirectoryInfo(Path.Combine(addonPath.FullName,           versionInfoRelease.AssemblyVersion));
+        var addonPath          = new DirectoryInfo(Path.Combine(this.addonDirectory.FullName, "Hooks"));
+        var currentVersionPath = new DirectoryInfo(Path.Combine(addonPath.FullName,           versionInfoRelease.AssemblyVersion));
 
         var runtimePaths = new DirectoryInfo[]
         {
@@ -173,8 +173,7 @@ public class DalamudUpdater
         };
 
         // 检查当前版本是否存在且完整
-        if (!currentVersionPath.Exists || currentVersionPath.GetFiles() is not { Length: > 0 } ||
-            !IsIntegrity(addonPath, onlineHash))
+        if (!currentVersionPath.Exists || !IsIntegrity(currentVersionPath, onlineHash))
         {
             Log.Information("[DUPDATE] 未找到有效版本，开始重新下载");
             this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud); // 更新 UI 进度显示
@@ -317,14 +316,11 @@ public class DalamudUpdater
 
             if (!string.IsNullOrEmpty(onlineHash))
             {
-                using var stream = File.OpenRead(hashesPath);
-                using var md5    = MD5.Create();
-
-                var hashHash = BitConverter.ToString(md5.ComputeHash(stream)).ToUpperInvariant().Replace("-", string.Empty);
+                var hashHash = ComputeFileHash(hashesPath);
 
                 if (onlineHash != hashHash)
                 {
-                    Log.Error($"[UPDATE] hashes.json Hash Check Failed, local {hashHash}, remote {onlineHash}");
+                    Log.Error($"[UPDATE] hashes.json 哈希比对不一致, 本地: {hashHash}, 远程: {onlineHash}");
                     return false;
                 }
             }
@@ -348,11 +344,8 @@ public class DalamudUpdater
 
             foreach (var hash in hashes)
             {
-                var       file       = Path.Combine(directory.FullName, hash.Key.Replace("\\", "/"));
-                using var fileStream = File.OpenRead(file);
-                using var md5        = MD5.Create();
-
-                var hashed = BitConverter.ToString(md5.ComputeHash(fileStream)).ToUpperInvariant().Replace("-", string.Empty);
+                var file   = Path.Combine(directory.FullName, hash.Key.Replace("\\", "/"));
+                var hashed = ComputeFileHash(file);
 
                 if (hashed != hash.Value)
                 {
@@ -392,7 +385,13 @@ public class DalamudUpdater
                 if (asset.GetProperty("name").GetString() == "hashes.json")
                 {
                     var downloadUrl = asset.GetProperty("browser_download_url").GetString();
-                    return await this.ComputeFileHash(httpClient, downloadUrl);
+                    if (string.IsNullOrWhiteSpace(downloadUrl)) continue;
+                    
+                    var downloadPath = PlatformHelpers.GetTempFileName();
+                    await DownloadFile(downloadUrl, downloadPath, TimeSpan.FromSeconds(30));
+                    var hash = ComputeFileHash(downloadPath);
+                    File.Delete(downloadPath);
+                    return hash;
                 }
             }
 
@@ -401,16 +400,20 @@ public class DalamudUpdater
         catch (HttpRequestException e) { throw new Exception("Error accessing GitHub API: " + e.Message); }
     }
 
-    private async Task<string> ComputeFileHash(HttpClient httpClient, string downloadUrl)
+    private static string ComputeFileHash(string path)
     {
         try
         {
-            using var stream = await httpClient.GetStreamAsync(downloadUrl);
+            using var stream = File.OpenRead(path);
             using var md5    = MD5.Create();
 
-            return BitConverter.ToString(md5.ComputeHash(stream)).ToUpperInvariant().Replace("-", string.Empty);
+            var hashHash = BitConverter.ToString(md5.ComputeHash(stream)).ToUpperInvariant().Replace("-", string.Empty);
+            return hashHash;
         }
-        catch (Exception e) { throw new Exception("Error computing file hash: " + e.Message); }
+        catch (Exception e)
+        {
+            throw new Exception("Error computing file hash: " + e.Message);
+        }
     }
 
     private static void CleanUpOld(DirectoryInfo addonPath, string currentVer)
