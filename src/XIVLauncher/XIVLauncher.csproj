@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Product>XIVLauncherCN</Product>
-        <AssemblyTitle>XIVLauncherCN</AssemblyTitle>
+        <Product>XIVLauncherCN (Soil)</Product>
+        <AssemblyTitle>XIVLauncherCN (Soil)</AssemblyTitle>
         <Description>Custom launcher for the most critically acclaimed MMO's CN server.</Description>
         <VersionPrefix>6.4.4-6</VersionPrefix>
     </PropertyGroup>

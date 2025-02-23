@@ -10,7 +10,7 @@
     xmlns:viewModel="clr-namespace:XIVLauncher.Windows.ViewModel"
     xmlns:game="clr-namespace:XIVLauncher.Common.Game;assembly=XIVLauncher.Common"
     mc:Ignorable="d"
-    Title="XIVLauncherCN"
+    Title="XIVLauncherCN (Soil)"
     Width="700"
     Height="376"
     ResizeMode="CanMinimize" WindowStartupLocation="CenterScreen"
