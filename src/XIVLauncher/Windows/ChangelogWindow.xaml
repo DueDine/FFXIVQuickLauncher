@@ -36,14 +36,6 @@
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
                     VerticalAlignment="Bottom" Margin="0 15 10 10">
-            <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
-                    Margin="0,0,5,0" Click="EmailButton_OnClick" Visibility="Collapsed">
-                <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="Email" />
-                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center"
-                               Text="{Binding SendEmailLoc}" />
-                </StackPanel>
-            </Button>
 
             <!--<Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
                     x:Name="DiscordButton" Margin="0,0,5,0">
@@ -54,11 +46,11 @@
                 </StackPanel>
             </Button>-->
             <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
-                    x:Name="QqButton" Margin="0,0,5,0">
+                    x:Name="DiscordButton" Margin="0,0,5,0">
                 <StackPanel Orientation="Horizontal">
-                    <materialDesign:PackIcon Kind="Qqchat" />
+                    <materialDesign:PackIcon Kind="Discord" />
                     <TextBlock Margin="8 0 0 0" VerticalAlignment="Center"
-                               Text="加入QQ频道" />
+                               Text="加入 Discord 服务器" />
                 </StackPanel>
             </Button>
 

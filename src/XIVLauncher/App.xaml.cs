@@ -81,7 +81,7 @@ namespace XIVLauncher
             public bool SquirrelFirstRun { get; set; }
         }
 
-        public const string REPO_URL = "https://github.com/ottercorp/FFXIVQuickLauncher";
+        public const string REPO_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
 
         public static ILauncherSettingsV3 Settings;
         public static WindowsSteam Steam;

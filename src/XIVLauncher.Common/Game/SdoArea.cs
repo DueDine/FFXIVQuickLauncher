@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
@@ -36,13 +37,26 @@ namespace XIVLauncher.Common.Game
 
 		public static async Task<SdoArea[]> Get()
 		{
-			var request = new HttpRequestMessage(HttpMethod.Get, "https://ff.dorado.sdo.com/ff/area/serverlist_new.js");
-			request.Headers.AddWithoutValidation("Accept", "*/*");
-			request.Headers.AddWithoutValidation("Host", "ff.dorado.sdo.com");
-			var client = new HttpClient();
-			var resp = await client.SendAsync(request);
-			var text = await resp.Content.ReadAsStringAsync();
-			var json = text.Trim();
+            var handler = new HttpClientHandler
+            {
+                UseProxy = true,
+                Proxy = WebRequest.GetSystemWebProxy(),
+                Credentials = CredentialCache.DefaultCredentials
+            };
+
+            using var client = new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(30)
+            };
+
+            var request = new HttpRequestMessage(HttpMethod.Get, "https://ff.dorado.sdo.com/ff/area/serverlist_new.js");
+            request.Headers.Add("Accept", "*/*");
+            request.Headers.Add("Host", "ff.dorado.sdo.com");
+
+            using var response = await client.SendAsync(request);
+            response.EnsureSuccessStatusCode();
+            var text = await response.Content.ReadAsStringAsync();
+            var json = text.Trim();
 			json = json.Substring("var servers=".Length);
 			json = json.Substring(0, json.Length - 1);
 			//json = $"{{\"servers\":{json}}}";

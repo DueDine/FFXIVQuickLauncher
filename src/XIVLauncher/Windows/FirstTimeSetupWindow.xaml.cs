@@ -28,24 +28,16 @@ namespace XIVLauncher.Windows
 
             if (detectedPath != null) GamePathEntry.Text = detectedPath;
 
-#if !XL_NOAUTOUPDATE
-            if (EnvironmentSettings.IsDisableUpdates || AppUtil.GetBuildOrigin() != "ottercorp/FFXIVQuickLauncher")
+            try
             {
-#endif
-                CustomMessageBox.Show(
-                    $"你正在使用一个不受支持的XLLauncher版本！\n\n有可能不安全或对账号带来危害。 请从 {App.REPO_URL}/releases 下载干净的版本并重新安装或联系我们。",
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: this);
-#if !XL_NOAUTOUPDATE
-            }
-#endif
-        try {
-                string desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);//获取桌面文件夹路径
+                var desktop = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory); //获取桌面文件夹路径
                 CreateShortcut(desktop, "XIVLauncherCN", Path.Combine(new DirectoryInfo(Environment.CurrentDirectory).Parent.FullName, "XIVLauncherCN.exe"));
             }
-            catch {
+            catch
+            {
                 CustomMessageBox.Show(
                     $"创建快捷方式失败，如需要请手动创建快捷方式到桌面。",
-                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: this);                
+                    "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: this);
             }
         }
 

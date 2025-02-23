@@ -1426,9 +1426,9 @@ namespace XIVLauncher.Windows.ViewModel
                     if (InjectGame())
                     {
                         var dialog = CustomMessageBox.Builder
-                            .NewFrom("是否退出XIVLauncherCN?")
+                            .NewFrom("注入完成,是否退出XIVLauncherCN?")
                             .WithButtons(MessageBoxButton.YesNo)
-                            .WithCaption("注入完成")
+                            .WithCaption("XIVLauncherCN")
                             .WithParentWindow(_window)
                             .Show();
                         if (dialog == MessageBoxResult.Yes)
@@ -1462,11 +1462,16 @@ namespace XIVLauncher.Windows.ViewModel
             var gameExePath = Process.GetProcessById(gamePid).MainModule?.FileName;
             var gameExeFolder = Path.GetDirectoryName(gameExePath);
             var gamePath = (new DirectoryInfo(gameExeFolder!)).Parent;
-
-            if (!DalamudLauncher.CanRunDalamud(new DirectoryInfo(gameExeFolder)))
+            Log.Information($"GameExePath:{gameExePath},GameExeFolder:{gameExeFolder},GamePath;{gamePath}");
+            if (!DalamudLauncher.CanRunDalamud(gamePath))
             {
-                CustomMessageBox.Show(
-                    Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!"),
+                CustomMessageBox.Show($"""
+                    {Loc.Localize("DalamudIncompatible", "Dalamud was not yet updated for your current game version.\nThis is common after patches, so please be patient or ask on the Discord for a status update!")}
+                    GameExePath:{gameExePath}
+                    GameExeFolder:{gameExeFolder}
+                    GamePath:{gamePath}
+                    GameVersion:{Repository.Ffxiv.GetVer(gamePath)}
+                    """,
                     "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Asterisk);
                 return false;
             }
@@ -1620,8 +1625,9 @@ namespace XIVLauncher.Windows.ViewModel
 
             var gameRunner = new WindowsGameRunner(dalamudLauncher, dalamudOk, App.DalamudUpdater.Runtime);
             stopwatch.Stop();
-            if (stopwatch.Elapsed > TimeSpan.FromMinutes(5)) {
-                CustomMessageBox.Show("会话已过期,请重新登录","XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
+            if (stopwatch.Elapsed > TimeSpan.FromMinutes(5))
+            {
+                CustomMessageBox.Show("会话已过期,请重新登录", "XIVLauncherCN", MessageBoxButton.OK, MessageBoxImage.Exclamation, parentWindow: _window);
                 return null;
             }
             // We won't do any sanity checks here anymore, since that should be handled in StartLogin

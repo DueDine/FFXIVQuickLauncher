@@ -171,7 +171,6 @@ namespace XIVLauncher.Windows
 
             OfficialLauncherButton.Visibility = builder.ShowOfficialLauncher ? Visibility.Visible : Visibility.Collapsed;
             DiscordButton.Visibility = builder.ShowDiscordLink ? Visibility.Visible : Visibility.Collapsed;
-            FaqButton.Visibility = builder.ShowHelpLinks ? Visibility.Visible : Visibility.Collapsed;
             IntegrityReportButton.Visibility = builder.ShowIntegrityReportLinks ? Visibility.Visible : Visibility.Collapsed;
             NewGitHubIssueButton.Visibility = builder.ShowNewGitHubIssue ? Visibility.Visible : Visibility.Collapsed;
 
@@ -277,12 +276,7 @@ namespace XIVLauncher.Windows
 
         private void DiscordButton_Click(object sender, RoutedEventArgs e)
         {
-            SupportLinks.OpenDiscord(sender, e);
-        }
-
-        private void QQButton_Click(object sender, RoutedEventArgs e)
-        {
-            SupportLinks.OpenQQChannel(sender, e);
+            SupportLinks.OpenDiscordChannel(sender, e);
         }
 
         private void FaqButton_Click(object sender, RoutedEventArgs e)

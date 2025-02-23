@@ -112,11 +112,11 @@
     "description": "SettingsControl.RunIntegrityCheck_OnClick"
   },
   "DalamudIncompatible": {
-    "message": "Dalamud 尚未支持您的游戏版本。\n这可能由于游戏更新导致，请耐心等待。您可以在 QQ 频道上获取到最新的消息。",
+    "message": "Dalamud 尚未支持您的游戏版本。\n这可能由于游戏更新导致，请耐心等待。",
     "description": "SettingsControl.EnableHooksCheckBox_OnChecked"
   },
   "DalamudCompatCheckFailed": {
-    "message": "无法从服务器获取当前 Dalamud 兼容的游戏版本。这可能是因为您的 .NET 框架版本过旧。\n您可以在 QQ 频道获取更多有关信息。",
+    "message": "无法从服务器获取当前 Dalamud 兼容的游戏版本。这可能是因为您的 .NET 框架版本过旧。",
     "description": "SettingsControl.EnableHooksCheckBox_OnChecked"
   },
   "SteamFtToggleAutoStartWarning": {
@@ -192,11 +192,11 @@
     "description": "ChangeLogWindowViewModel.SetupLoc"
   },
   "ChangelogLoadingError": {
-    "message": "无法加载更新日志。请检查 GitHub 或 QQ 频道！",
+    "message": "无法加载更新日志。",
     "description": "ChangeLogWindowViewModel.SetupLoc"
   },
   "JoinDiscord": {
-    "message": "加入 QQ 频道服务器",
+    "message": "加入 Discord 服务器",
     "description": "ChangeLogWindowViewModel.SetupLoc"
   },
   "SendEmail": {
@@ -592,7 +592,7 @@
     "description": "<TryHandlePatchAsync>d__34.MoveNext"
   },
   "PatchManNoInstaller": {
-    "message": "更新程序无法正常启动。\n{0}\n\n如果您刚才拒绝了权限请求，请重试并授权。\n如果该问题仍然持续，请在 QQ 频道上联系我们。",
+    "message": "更新程序无法正常启动。\n{0}\n\n如果您刚才拒绝了权限请求，请重试并授权。",
     "description": "<TryHandlePatchAsync>d__34.MoveNext"
   },
   "FreeSpaceError": {
@@ -672,7 +672,7 @@
     "description": "<TryProcessLoginResult>d__24.MoveNext"
   },
   "EverythingIsFuckedMessage": {
-    "message": "部分游戏文件已损坏或被第三方篡改，无法进行更新和启动。\n请重新安装游戏以修复此问题。\n\n如果该错误仍然持续，请通过 QQ 频道联系我们。",
+    "message": "部分游戏文件已损坏或被第三方篡改，无法进行更新和启动。\n请重新安装游戏以修复此问题。",
     "description": "<TryProcessLoginResult>d__24.MoveNext"
   },
   "LoginRepairResponseIsNotNeedsPatchGame": {
@@ -1052,7 +1052,7 @@
     "description": "SettingsControlViewModel.SetupLoc"
   },
   "Credits": {
-    "message": "作者：goat\n特别鸣谢：Mino、sky、LeonBlade、Wintermute、Zyian、Roy、Meli、\nAida Enna、Aireil、kizer 及 the angry paissa artist。\n\n如果您有任何问题或建议，请加入 QQ 频道或在 GitHub 上建立一个「Issue」。",
+    "message": "作者：goat\n特别鸣谢：Mino、sky、LeonBlade、Wintermute、Zyian、Roy、Meli、\nAida Enna、Aireil、kizer 及 the angry paissa artist。",
     "description": "SettingsControlViewModel.SetupLoc"
   },
   "License": {
