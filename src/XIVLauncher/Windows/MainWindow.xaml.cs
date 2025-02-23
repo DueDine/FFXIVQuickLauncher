@@ -11,6 +11,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 using Castle.Core.Internal;
 using CheapLoc;
 using MaterialDesignThemes.Wpf;
@@ -124,14 +125,6 @@ namespace XIVLauncher.Windows
             {
                 _sdoAreas = new SdoArea[1] { new SdoArea { AreaName = "获取大区失败", Areaid = "-1" } };
                 throw ex;
-            }
-            finally
-            {
-                Dispatcher.BeginInvoke(new Action(async () =>
-                {
-                    ServerSelection.ItemsSource = _sdoAreas;
-                    ServerSelection.SelectedIndex = 0;
-                }));
             }
         }
 
@@ -378,12 +371,14 @@ namespace XIVLauncher.Windows
                 await SetupServers();
                 Dispatcher.Invoke(() =>
                 {
+                    ServerSelection.ItemsSource = _sdoAreas;
+                    ServerSelection.SelectedIndex = 0;
                     if (savedAccount != null)
-                        SwitchAccount(savedAccount, false);
-                    //LoginTypeSelection.SelectedValue = App.Settings.SelectedLoginType.GetValueOrDefault(LoginType.SdoSlide);
+                        SwitchAccount(savedAccount, false); ;
                 });
+
                 await SetupHeadlines();
-                Troubleshooting.LogTroubleshooting();
+                Troubleshooting.LogTroubleshooting(); ;
             });
 
 
@@ -591,16 +586,17 @@ namespace XIVLauncher.Windows
 
         private void SwitchAccount(XivAccount account, bool saveAsCurrent)
         {
+            if (saveAsCurrent)
+            {
+                _accountManager.CurrentAccount = account;
+            }
+
             Model.Username = account.UserName;
             //Model.IsOtp = account.UseOtp;
             //Model.IsSteam = account.UseSteamServiceAccount;
             Model.IsFastLogin = account.AutoLogin;
             Model.Area = _sdoAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
             LoginPassword.Password = string.Empty;
-            if (saveAsCurrent)
-            {
-                _accountManager.CurrentAccount = account;
-            }
 
             switch (account.AccountType)
             {
