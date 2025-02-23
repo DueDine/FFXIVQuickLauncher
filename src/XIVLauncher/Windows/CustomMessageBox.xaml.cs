@@ -150,7 +150,7 @@ namespace XIVLauncher.Windows
                 case MessageBoxImage.Question:
                     ErrorPackIcon.Visibility = Visibility.Visible;
                     ErrorPackIcon.Kind = PackIconKind.QuestionMarkCircle;
-                    ErrorPackIcon.Foreground = Brushes.DodgerBlue;
+                    ErrorPackIcon.Foreground = Brushes.DarkOrange;
                     SystemSounds.Question.Play();
                     break;
                 case MessageBoxImage.Exclamation:
@@ -162,7 +162,7 @@ namespace XIVLauncher.Windows
                 case MessageBoxImage.Asterisk:
                     ErrorPackIcon.Visibility = Visibility.Visible;
                     ErrorPackIcon.Kind = PackIconKind.Information;
-                    ErrorPackIcon.Foreground = Brushes.DodgerBlue;
+                    ErrorPackIcon.Foreground = Brushes.DarkOrange;
                     SystemSounds.Asterisk.Play();
                     break;
                 default:

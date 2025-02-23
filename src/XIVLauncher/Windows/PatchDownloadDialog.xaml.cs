@@ -129,9 +129,9 @@ namespace XIVLauncher.Windows
             Progress1.IsIndeterminate = indeterminate;
             Progress1Text.Text = patchName;
 
-            this.Progress1.Foreground = Brushes.DodgerBlue;
-            this.Progress1.Background = Brushes.LightSkyBlue;
-            this.Progress1.BorderBrush = Brushes.LightSkyBlue;
+            this.Progress1.Foreground = Brushes.DarkOrange;
+            this.Progress1.Background = Brushes.Orange;
+            this.Progress1.BorderBrush = Brushes.Orange;
         }
 
         public void SetProgressBar2Progress(string patchName, double percentage, bool indeterminate)
@@ -140,9 +140,9 @@ namespace XIVLauncher.Windows
             Progress2.IsIndeterminate = indeterminate;
             Progress2Text.Text = patchName;
 
-            this.Progress2.Foreground = Brushes.DodgerBlue;
-            this.Progress2.Background = Brushes.LightSkyBlue;
-            this.Progress2.BorderBrush = Brushes.LightSkyBlue;
+            this.Progress2.Foreground = Brushes.DarkOrange;
+            this.Progress2.Background = Brushes.Orange;
+            this.Progress2.BorderBrush = Brushes.Orange;
         }
 
         public void SetProgressBar3Progress(string patchName, double percentage, bool indeterminate)
@@ -151,9 +151,9 @@ namespace XIVLauncher.Windows
             Progress3.IsIndeterminate = indeterminate;
             Progress3Text.Text = patchName;
 
-            this.Progress3.Foreground = Brushes.DodgerBlue;
-            this.Progress3.Background = Brushes.LightSkyBlue;
-            this.Progress3.BorderBrush = Brushes.LightSkyBlue;
+            this.Progress3.Foreground = Brushes.DarkOrange;
+            this.Progress3.Background = Brushes.Orange;
+            this.Progress3.BorderBrush = Brushes.Orange;
         }
 
         public void SetProgressBar4Progress(string patchName, double percentage, bool indeterminate)
@@ -162,9 +162,9 @@ namespace XIVLauncher.Windows
             Progress4.IsIndeterminate = indeterminate;
             Progress4Text.Text = patchName;
 
-            this.Progress4.Foreground = Brushes.DodgerBlue;
-            this.Progress4.Background = Brushes.LightSkyBlue;
-            this.Progress4.BorderBrush = Brushes.LightSkyBlue;
+            this.Progress4.Foreground = Brushes.DarkOrange;
+            this.Progress4.Background = Brushes.Orange;
+            this.Progress4.BorderBrush = Brushes.Orange;
         }
 
         private void PatchDownloadDialog_OnClosing(object sender, CancelEventArgs e)

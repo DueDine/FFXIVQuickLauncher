@@ -40,8 +40,8 @@
     <PropertyGroup>
         <ApplicationIcon>Resources\dalamud_icon.ico</ApplicationIcon>
         <ApplicationManifest>app.manifest</ApplicationManifest>
-        <PackageId>XIVLauncherCN (Soil)</PackageId>
-        <AssemblyName>XIVLauncherCN (Soil)</AssemblyName>
+        <PackageId>XIVLauncherCN</PackageId>
+        <AssemblyName>XIVLauncherCN</AssemblyName>
     </PropertyGroup>
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
