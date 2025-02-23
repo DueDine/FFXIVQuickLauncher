@@ -328,7 +328,7 @@ namespace XIVLauncher.Windows.ViewModel
 
             if (!doingAutoLogin) App.Settings.AutologinEnabled = IsAutoLogin;
             App.Settings.FastLogin = IsFastLogin;
-
+            // TODO: 太jb乱了，得重构
             var finalLoginType = loginType;
             var serect = string.Empty;
             if (loginType != LoginType.SdoStatic && loginType != LoginType.WeGameToken)
@@ -422,6 +422,11 @@ namespace XIVLauncher.Windows.ViewModel
                 {
                     readWeGameInfo = true;
                 }
+            }
+            else if (loginType == LoginType.SdoStatic)
+            {
+                serect = inputPassword;
+                finalLoginType = LoginType.SdoStatic;
             }
 
             if (loginType == LoginType.WeGameSid)
