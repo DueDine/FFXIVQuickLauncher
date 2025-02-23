@@ -1,110 +1,107 @@
-name: Auto Build & Release
-
-on:
-  workflow_dispatch:
+name: Build XIVLauncher
+on: [push, pull_request]
 
 concurrency:
-  group: build-release-${{ github.ref }}
+  group: ${{ github.workflow }}
   cancel-in-progress: true
 
 jobs:
   build-release:
-    name: Build and Release
+    name: Build Release on Windows
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: windows-2022
     permissions:
       contents: write
-    env:
-      TZ: Asia/Shanghai
-
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Generate Release Tag
-        id: generate-tag
-        shell: pwsh
-        run: |
-          $tzId = "China Standard Time"
-          $utcNow = [DateTime]::UtcNow
-          $cstTime = [System.TimeZoneInfo]::ConvertTimeBySystemTimeZoneId($utcNow, $tzId)
-          $datePart = $cstTime.ToString("yy-MM-dd")
-          $tags = git tag --list "$datePart-*"
-          
-          $maxNumber = 0
-          foreach ($tag in $tags) {
-              $numberPart = $tag.Split('-')[-1]
-              if ($numberPart -match '^\d{2}$') {
-                  $currentNumber = [int]$numberPart
-                  $maxNumber = [Math]::Max($maxNumber, $currentNumber)
-              }
-          }
-          
-          $nextNumber = $maxNumber + 1
-          $newTag = "{0}-{1:D2}" -f $datePart, $nextNumber
-          Write-Output "new_tag=$newTag" >> $env:GITHUB_OUTPUT
+      - name: Initialize Submodules
+        run: git submodule update --init --recursive
 
-      - name: Create Git Tag
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const newTag = '${{ steps.generate-tag.outputs.new_tag }}'
-            await github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: `refs/tags/${newTag}`,
-              sha: context.sha
-            })
-
-      - name: Build Artifacts
+      - name: Restore Nuget Packages
         run: |
-          git submodule update --init --recursive
-          cd ./src/
+          cd .\src\
           dotnet restore
+          cd ..
+
+      - name: Define VERSION
+        run: |
+          $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
+          $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
+          $env:BRANCH = $env:GITHUB_REF -replace '.*/'
+
+          ($env:REPO_NAME) >> VERSION
+          ($env:BRANCH) >> VERSION
+          ($env:COMMIT) >> VERSION
+
+      - name: Build Release
+        run: |
+          cd "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\"
+          .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=Release
+
+      - name: Generate Hashes File
+        run: .\scripts\CreateHashList.ps1 .\src\bin\win-x64
+
+      - name: Velopack Build and Upload
+        id: build-velopack
+        run: |
+          $channel = "win"
+          $refver = $env:GITHUB_REF -replace '.*/'
+          $desc = $(git describe --tags) -replace '-(\d+)-.{9}$','.beta.$1'
+          echo "::set-output name=version::$refver"
+
+          cd src\
+          mkdir Releases
+          dotnet tool install -g vpk
+          vpk download github --repoUrl https://github.com/${{ github.repository }}
+          vpk pack -u XIVLauncherCN -v $refver -p .\bin\win-x64 -o .\Releases -e XIVLauncherCN.exe --channel $channel --packAuthors OmenCorp --releaseNotes .\XIVLauncher\Resources\CHANGELOG.txt --icon .\XIVLauncher\Resources\dalamud_icon.ico --splashImage .\XIVLauncher\Resources\logo.png --framework net8.0-x64-desktop
+          vpk upload github --repoUrl https://github.com/${{ github.repository }} --channel $channel --publish --releaseName "Release $refver" --token ${{ secrets.GITHUB_TOKEN }}
+
+
+  build:
+    name: Build on Windows
+    runs-on: windows-2022
+    if: "!startsWith(github.ref, 'refs/tags/')"
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Initialize Submodules
+        run: git submodule update --init --recursive
+          
+      - name: Restore Nuget Packages
+        run: |
+          cd .\src\
+          dotnet restore
+          cd ..
+
+      - name: Define VERSION
+        run: |
+          $env:COMMIT = $env:GITHUB_SHA.Substring(0, 7)
+          $env:REPO_NAME = $env:GITHUB_REPOSITORY -replace '.*/'
+          $env:BRANCH = $env:GITHUB_REF -replace '.*/'
+
+          ($env:REPO_NAME) >> VERSION
+          ($env:BRANCH) >> VERSION
+          ($env:COMMIT) >> VERSION
+
+      - name: Build Release
+        run: |
           cd "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\MSBuild\Current\Bin\"
           .\MSBuild.exe $Env:GITHUB_WORKSPACE\src\XIVLauncher.sln /t:Build /p:Configuration=ReleaseNoUpdate
 
       - name: Generate Hashes File
-        shell: pwsh
-        run: |
-          $buildDir = "$env:GITHUB_WORKSPACE/src/bin/win-x64"
-          $hashScript = "$env:GITHUB_WORKSPACE/scripts/CreateHashList.ps1"
-          
-          # 执行哈希生成脚本
-          & $hashScript -targetDir $buildDir
-          
-          # 验证文件生成
-          if (-not (Test-Path "$buildDir/hashes.json")) {
-              Write-Error "❌ hashes.json 生成失败"
-              exit 1
-          }
-          
-          # 创建制品目录
-          New-Item -ItemType Directory -Path "$env:GITHUB_WORKSPACE/artifacts" -Force
-          
-          # 复制哈希文件
-          Copy-Item -Path "$buildDir/hashes.json" -Destination "$env:GITHUB_WORKSPACE/artifacts/"
-          Write-Output "✅ 哈希文件已生成并复制"
+        run: .\scripts\CreateHashList.ps1 .\src\bin
 
-      - name: Package 7z Archive
-        shell: pwsh
-        run: |
-          $buildDir = "$env:GITHUB_WORKSPACE/src/bin/win-x64"
-          $artifactDir = "$env:GITHUB_WORKSPACE/artifacts"
-          
-          $filesToCompress = Get-ChildItem -Path $buildDir
-          7z a -t7z -mx=9 "$artifactDir/latest.7z" $filesToCompress.FullName
-          
-          Write-Output "✅ 7z 压缩包已创建"
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@master
         with:
-          tag_name: ${{ steps.generate-tag.outputs.new_tag }}
-          name: "Release ${{ steps.generate-tag.outputs.new_tag }}"
-          files: |
-            artifacts/latest.7z
-            artifacts/hashes.json
+          name: xivlauncher-artifact
+          path: src\bin\

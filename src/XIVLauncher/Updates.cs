@@ -9,6 +9,7 @@ using CheapLoc;
 using Newtonsoft.Json;
 using Serilog;
 using Velopack;
+using Velopack.Sources;
 using XIVLauncher.Common.Util;
 using XIVLauncher.Windows;
 
@@ -19,7 +20,7 @@ namespace XIVLauncher
     internal class Updates
     {
         public event Action<bool>? OnUpdateCheckFinished;
-        private const string UPDATE_URL = "https://s3.ffxiv.wang/xivlauncher-cn";
+        private const string UPDATE_URL = "https://github.com/DueDine/FFXIVQuickLauncher";
 
 #if DEV_SERVER
         private const string LEASE_META_URL = "http://localhost:5025/Launcher/GetLease";
@@ -73,10 +74,9 @@ namespace XIVLauncher
 
             try
             {
-                var updateOptions = App.Settings.EnableBeta is true
-                                        ? new UpdateOptions { ExplicitChannel = "beta", AllowVersionDowngrade = true }
-                                        : new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
-                var mgr = new UpdateManager(UPDATE_URL, updateOptions);
+                var updateOptions = new UpdateOptions { ExplicitChannel = "win", AllowVersionDowngrade = true };
+                var updateSource = new GithubSource(UPDATE_URL, null, true);
+                var mgr = new UpdateManager(updateSource, updateOptions);
 
                 // check for new version
                 var newRelease = await mgr.CheckForUpdatesAsync();
