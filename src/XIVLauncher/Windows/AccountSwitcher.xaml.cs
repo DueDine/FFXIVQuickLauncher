@@ -174,7 +174,7 @@ namespace XIVLauncher.Windows
             var shDesktop = (object)"Desktop";
 
             var shell = new WshShell();
-            var shortcutAddress = (string)shell.SpecialFolders.Item(ref shDesktop) + $@"\XIVLauncherCN - {selectedEntry.Account.Id}.lnk";
+            var shortcutAddress = (string)shell.SpecialFolders.Item(ref shDesktop) + $@"\XIVLauncherCN - {selectedEntry.Account.UserName}.lnk";
             var shortcut = (IWshShortcut)shell.CreateShortcut(shortcutAddress);
             shortcut.Description = $"Open XIVLauncher with the \"{selectedEntry.Account.UserName}\" Sdo account.";
             shortcut.TargetPath = Path.Combine(new DirectoryInfo(Environment.CurrentDirectory).Parent.FullName, "XIVLauncherCN.exe");

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Management;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Windows;
 using CheapLoc;
 using Microsoft.Win32;
@@ -234,7 +236,7 @@ namespace XIVLauncher
         {
             return Process.GetProcesses()
             .Where(p => p.ProcessName == "ffxiv_dx11")
-            .Where(p => !p.MainWindowTitle.Contains("FINAL FANTASY XIV"))
+            .Where(p => !p.MainWindowTitle.Contains("FINAL FANTASY XIV") && !p.HasExited)
             .Select(p => p.Id);
         }
     }

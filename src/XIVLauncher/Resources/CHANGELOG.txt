@@ -1,4 +1,4 @@
-* 修复了由于传入路径错误导致的 Dalamud 反复更新问题
-* 删除了 ottercorp 的相关联系方式
-* 合并了 ottercorp 的 XIVLauncherCN 更新:
-  * 修复了手动注入时出现的版本错误问题
+* 新增了 Github API 速率达限的提示窗口
+* 合并了来自 ottercorp 的 XIVLauncherCN 更新:
+  * 修复快捷登录图标到桌面失败
+  * 手动注入增加管理员权限提示

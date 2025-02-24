@@ -57,7 +57,7 @@ namespace XIVLauncher.Windows
 
         private AccountManager _accountManager;
 
-        private MainWindowViewModel Model => this.DataContext as MainWindowViewModel;
+        public MainWindowViewModel Model => this.DataContext as MainWindowViewModel;
         private readonly Launcher _launcher;
 
         public MainWindow()
@@ -604,7 +604,9 @@ namespace XIVLauncher.Windows
                     if (account.Password is not null)
                     {
                         LoginTypeSelection.SelectedValue = LoginType.SdoStatic;
-                        LoginPassword.Password = account.Password;
+
+                        // Make users happy by not showing their password
+                        LoginPassword.Password = MainWindowViewModel.PresudoPassword;
                     }
                     else
                     {

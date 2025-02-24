@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.CommandLine;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
@@ -272,6 +273,7 @@ namespace XIVLauncher.Windows.ViewModel
             });
         }
 
+        public const string PresudoPassword = "********假的密码********";
         private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
         {
             ProblemCheck.RunCheck(_window);
@@ -331,6 +333,10 @@ namespace XIVLauncher.Windows.ViewModel
             // TODO: 太jb乱了，得重构
             var finalLoginType = loginType;
             var serect = string.Empty;
+            if (loginType == LoginType.SdoStatic && inputPassword == PresudoPassword)
+            {
+                inputPassword = string.Empty;
+            }
             if (loginType != LoginType.SdoStatic && loginType != LoginType.WeGameToken)
             {
                 inputPassword = string.Empty;
@@ -1423,6 +1429,22 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 try
                 {
+                    if (!PlatformHelpers.IsElevated())
+                    {
+                        Log.Error($"当前XLCN并非管理器权限");
+                        var proc = new ProcessStartInfo
+                        {
+                            UseShellExecute = true,
+                            WorkingDirectory = Environment.CurrentDirectory,
+                            FileName = Process.GetCurrentProcess().MainModule.FileName,
+                            Verb = "runas",
+                            Arguments = "--inject"
+                        };
+
+                        Process.Start(proc);
+                        Environment.Exit(0);
+                    }
+
                     if (InjectGame())
                     {
                         var dialog = CustomMessageBox.Builder
