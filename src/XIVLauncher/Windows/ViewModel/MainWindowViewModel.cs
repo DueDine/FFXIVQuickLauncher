@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.CommandLine;
 using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
@@ -1428,6 +1429,22 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 try
                 {
+                    if (!PlatformHelpers.IsElevated())
+                    {
+                        Log.Error($"当前XLCN并非管理器权限");
+                        var proc = new ProcessStartInfo
+                        {
+                            UseShellExecute = true,
+                            WorkingDirectory = Environment.CurrentDirectory,
+                            FileName = Process.GetCurrentProcess().MainModule.FileName,
+                            Verb = "runas",
+                            Arguments = "--inject"
+                        };
+
+                        Process.Start(proc);
+                        Environment.Exit(0);
+                    }
+
                     if (InjectGame())
                     {
                         var dialog = CustomMessageBox.Builder

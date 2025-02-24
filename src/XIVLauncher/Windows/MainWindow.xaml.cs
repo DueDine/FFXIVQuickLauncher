@@ -57,7 +57,7 @@ namespace XIVLauncher.Windows
 
         private AccountManager _accountManager;
 
-        private MainWindowViewModel Model => this.DataContext as MainWindowViewModel;
+        public MainWindowViewModel Model => this.DataContext as MainWindowViewModel;
         private readonly Launcher _launcher;
 
         public MainWindow()

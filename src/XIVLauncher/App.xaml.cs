@@ -79,6 +79,9 @@ namespace XIVLauncher
 
             [CommandLine.Option("squirrel-firstrun", Hidden = true)]
             public bool SquirrelFirstRun { get; set; }
+
+            [CommandLine.Option("inject", Hidden = true)]
+            public bool InjectMode { get; set; }
         }
 
         public const string REPO_URL = "https://github.com/ottercorp/FFXIVQuickLauncher";
@@ -97,6 +100,7 @@ namespace XIVLauncher
         private MainWindow _mainWindow;
 
         public static bool GlobalIsDisableAutologin { get; private set; }
+        public static bool InjectMode { get; private set; }
         public static byte[] GlobalSteamTicket { get; private set; }
         public static DalamudUpdater DalamudUpdater { get; private set; }
 
@@ -216,6 +220,9 @@ namespace XIVLauncher
                 catch (Exception ex)
                 {
                     Log.Error(ex, "Could not start dalamud updater");
+                }
+                if (InjectMode) {
+                    _mainWindow.Model.InjectGameCommand.Execute(null);
                 }
             });
         }
@@ -359,6 +366,10 @@ namespace XIVLauncher
                 if (CommandLine.DoGenerateLocalizables)
                 {
                     GenerateLocalizables();
+                }
+                if (CommandLine.InjectMode)
+                {
+                    InjectMode = true;
                 }
             }
             catch (Exception ex)
