@@ -32,7 +32,7 @@ public class HttpClientDownloadWithProgress : IDisposable
         this.httpClient.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
         this.httpClient.DefaultRequestHeaders.Add("accept-encoding", "gzip, deflate, br");
         var request = new HttpRequestMessage(HttpMethod.Get, this.downloadUrl);
-        if (!downloadUrl.Contains("aonyx.ffxiv.wang"))
+        if (!downloadUrl.Contains(ServerAddress.MainAddress))
             request.Headers.Add("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 Edg/130.0.0.0");
         using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
         await this.DownloadFileFromHttpResponseMessage(response).ConfigureAwait(false);

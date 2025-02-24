@@ -18,7 +18,7 @@ namespace XIVLauncher.Common.Dalamud
 {
     public class AssetManager
     {
-        private const string ASSET_STORE_URL = "https://aonyx.ffxiv.wang/Dalamud/Asset/Meta";
+        private const string ASSET_STORE_URL = ServerAddress.MainAddress + "/Dalamud/Asset/Meta";
 
         internal class AssetInfo
         {

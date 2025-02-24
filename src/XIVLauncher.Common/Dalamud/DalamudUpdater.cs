@@ -173,7 +173,7 @@ namespace XIVLauncher.Common.Dalamud
 
                 var content = new StringContent(jsonData, Encoding.UTF8, "application/json");
 
-                var respond = await client.PostAsync("https://aonyx.ffxiv.wang/Dalamud/Check/StgCode", content).ConfigureAwait(false);
+                var respond = await client.PostAsync(ServerAddress.MainAddress + "/Dalamud/Check/StgCode", content).ConfigureAwait(false);
 
                 if (!respond.IsSuccessStatusCode)
                 {
@@ -512,7 +512,7 @@ namespace XIVLauncher.Common.Dalamud
                     using var client = new HttpClient();
                     client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
 
-                    runtimeHashes = await client.GetStringAsync($"https://aonyx.ffxiv.wang/Dalamud/Release/Runtime/Hashes/{version}").ConfigureAwait(false);
+                    runtimeHashes = await client.GetStringAsync(ServerAddress.MainAddress + $"/Dalamud/Release/Runtime/Hashes/{version}").ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -543,8 +543,8 @@ namespace XIVLauncher.Common.Dalamud
                 runtimePath.Create();
             }
 
-            var dotnetUrl = $"https://aonyx.ffxiv.wang/Dalamud/Release/Runtime/DotNet/{version}";
-            var desktopUrl = $"https://aonyx.ffxiv.wang/Dalamud/Release/Runtime/WindowsDesktop/{version}";
+            var dotnetUrl = ServerAddress.MainAddress + $"/Dalamud/Release/Runtime/DotNet/{version}";
+            var desktopUrl = ServerAddress.MainAddress + $"/Dalamud/Release/Runtime/WindowsDesktop/{version}";
 
             var downloadPath = PlatformHelpers.GetTempFileName();
 
