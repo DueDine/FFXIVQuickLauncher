@@ -609,7 +609,9 @@ namespace XIVLauncher.Windows
                     if (account.Password is not null)
                     {
                         LoginTypeSelection.SelectedValue = LoginType.SdoStatic;
-                        LoginPassword.Password = account.Password;
+
+                        // Make users happy by not showing their password
+                        LoginPassword.Password = MainWindowViewModel.PresudoPassword;
                     }
                     else
                     {

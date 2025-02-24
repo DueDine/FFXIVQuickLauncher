@@ -272,6 +272,7 @@ namespace XIVLauncher.Windows.ViewModel
             });
         }
 
+        public const string PresudoPassword = "********假的密码********";
         private async Task Login(LoginType loginType, string username, string inputPassword, bool doingAutoLogin, bool readWeGameInfo, AfterLoginAction action)
         {
             ProblemCheck.RunCheck(_window);
@@ -331,6 +332,10 @@ namespace XIVLauncher.Windows.ViewModel
             // TODO: 太jb乱了，得重构
             var finalLoginType = loginType;
             var serect = string.Empty;
+            if (loginType == LoginType.SdoStatic && inputPassword == PresudoPassword)
+            {
+                inputPassword = string.Empty;
+            }
             if (loginType != LoginType.SdoStatic && loginType != LoginType.WeGameToken)
             {
                 inputPassword = string.Empty;

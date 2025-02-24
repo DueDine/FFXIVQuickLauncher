@@ -61,13 +61,14 @@ namespace XIVLauncher.Accounts
                 throw new Exception($"Cred type: {type} not supported");
             }
 
-            var testText = EncryptionHelper.GetRandomHexString(32);
-            var encrypted = await newCred.Encrypt(testText);
-            var decrypted = await newCred.Decrypt(encrypted);
-
-            if (testText != decrypted)
-            {
-                throw new Exception($"Cred type: {type} test failed");
+            if (oldCred != null) {
+                var testText = EncryptionHelper.GetRandomHexString(32);
+                var encrypted = await newCred.Encrypt(testText);
+                var decrypted = await newCred.Decrypt(encrypted);
+                if (testText != decrypted)
+                {
+                    throw new Exception($"Cred type: {type} test failed");
+                }
             }
 
             if (oldCred == null)
