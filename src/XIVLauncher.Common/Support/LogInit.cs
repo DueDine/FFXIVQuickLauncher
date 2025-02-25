@@ -2,7 +2,9 @@ using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using CommandLine;
 using Serilog;
+using Serilog.Core;
 using Serilog.Enrichers.Sensitive;
+using Serilog.Events;
 
 namespace XIVLauncher.Common.Support;
 
@@ -17,6 +19,8 @@ public static class LogInit
         [Option("log-file-path", Required = false, HelpText = "Set path for log file.")]
         public string? LogPath { get; set; }
     }
+
+    public static LoggingLevelSwitch LevelSwitch;
 
     public static void Setup(string defaultLogPath, string[] args)
     {
@@ -56,10 +60,9 @@ public static class LogInit
 
 #if DEBUG
         config.WriteTo.Debug();
-        config.MinimumLevel.Verbose();
-#else
-        config.MinimumLevel.Information();
 #endif
+        //config.MinimumLevel.Verbose();
+        LevelSwitch = new LoggingLevelSwitch(GetDefaultLevel());
 
         config.Enrich.WithSensitiveDataMasking(o =>
         {
@@ -70,11 +73,22 @@ public static class LogInit
             };
         });
 
+        config.MinimumLevel.ControlledBy(LevelSwitch);
+
         if (parsed.Verbose)
-            config.MinimumLevel.Verbose();
+            LevelSwitch = new LoggingLevelSwitch(LogEventLevel.Verbose);
 
         Log.Logger = config.CreateLogger();
     }
+    public static LogEventLevel GetDefaultLevel()
+    {
+        var logLevel = LogEventLevel.Information;
+#if DEBUG
+        logLevel = LogEventLevel.Verbose;
+#endif
+        return logLevel;
+    }
+
 
     private class SeTestSidMaskingOperator : RegexMaskingOperator
     {

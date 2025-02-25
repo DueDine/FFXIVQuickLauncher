@@ -1,4 +1,8 @@
-﻿using System.Windows;
+using Serilog;
+using Serilog.Core;
+using Serilog.Events;
+using System.Windows;
+using XIVLauncher.Common.Support;
 using XIVLauncher.Windows.ViewModel;
 
 namespace XIVLauncher.Windows
@@ -24,6 +28,8 @@ namespace XIVLauncher.Windows
             ExitLauncherAfterGameExitCheckbox.IsChecked = App.Settings.ExitLauncherAfterGameExit ?? true;
             TreatNonZeroExitCodeAsFailureCheckbox.IsChecked = App.Settings.TreatNonZeroExitCodeAsFailure ?? false;
             ForceNorthAmericaCheckbox.IsChecked = App.Settings.ForceNorthAmerica ?? false;
+            EnableBeta.IsChecked = App.Settings.EnableBeta ?? false;
+            EnableDebugLog.IsChecked = LogInit.LevelSwitch.MinimumLevel == LogEventLevel.Verbose;
         }
 
         private void Save()
@@ -32,6 +38,16 @@ namespace XIVLauncher.Windows
             App.Settings.ExitLauncherAfterGameExit = ExitLauncherAfterGameExitCheckbox.IsChecked == true;
             App.Settings.TreatNonZeroExitCodeAsFailure = TreatNonZeroExitCodeAsFailureCheckbox.IsChecked == true;
             App.Settings.ForceNorthAmerica = ForceNorthAmericaCheckbox.IsChecked == true;
+            App.Settings.EnableBeta = EnableBeta.IsChecked == true;
+            App.Settings.EnableDebugLog = EnableDebugLog.IsChecked == true;
+            if (EnableDebugLog.IsChecked == true)
+            {
+                LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+            }
+            else
+            {
+                LogInit.LevelSwitch.MinimumLevel = LogInit.GetDefaultLevel();
+            }
         }
 
         private void CloseButton_OnClick(object sender, RoutedEventArgs e)

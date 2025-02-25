@@ -1,4 +1,4 @@
-﻿<Window x:Class="XIVLauncher.Windows.AdvancedSettingsWindow"
+<Window x:Class="XIVLauncher.Windows.AdvancedSettingsWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -42,6 +42,12 @@
             <CheckBox x:Name="ForceNorthAmericaCheckbox"
                       Visibility="Collapsed"
                       Content="{Binding ForceNorthAmericaLoc}"
+                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
+            <CheckBox x:Name="EnableBeta"
+                      Content="接受测试版更新"
+                      HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
+            <CheckBox x:Name="EnableDebugLog"
+                      Content="将Log等级调整为Debug"
                       HorizontalAlignment="Left" Margin="0,0,0,7" Foreground="DarkGray" />
         </StackPanel>
         

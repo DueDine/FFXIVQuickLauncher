@@ -143,6 +143,11 @@ namespace XIVLauncher
                        .UseTypeParser(new CommonJsonParser<PreserveWindowPosition.WindowPlacement>())
                        .Build();
 
+            if (!Settings.EnableDebugLog.GetValueOrDefault(false)) {
+                Settings.EnableDebugLog = false;
+                LogInit.LevelSwitch.MinimumLevel = LogEventLevel.Verbose;
+            }
+
             if (string.IsNullOrEmpty(Settings.AcceptLanguage))
             {
                 Settings.AcceptLanguage = ApiHelpers.GenerateAcceptLanguage();
@@ -221,7 +226,8 @@ namespace XIVLauncher
                 {
                     Log.Error(ex, "Could not start dalamud updater");
                 }
-                if (InjectMode) {
+                if (InjectMode)
+                {
                     _mainWindow.Model.InjectGameCommand.Execute(null);
                 }
             });

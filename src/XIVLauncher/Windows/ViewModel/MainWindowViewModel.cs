@@ -322,126 +322,45 @@ namespace XIVLauncher.Windows.ViewModel
 
                 return;
             }
-            //if (!isScanQrCode)
-            //{
-            //    username = username.Replace(" ", string.Empty); // Remove whitespace
-            //    var hasValidCache = App.UniqueIdCache.HasValidCache(username) && App.Settings.UniqueIdCacheEnabled;
-            //    PersistAccount(username, password);
-            //}
-            //PersistAccount(username, password);
 
             if (!doingAutoLogin) App.Settings.AutologinEnabled = IsAutoLogin;
             App.Settings.FastLogin = IsFastLogin;
             // TODO: 太jb乱了，得重构
             var finalLoginType = loginType;
             var serect = string.Empty;
+            inputPassword = (inputPassword == PresudoPassword) ? string.Empty : inputPassword?.Trim();
 
-            if (loginType != LoginType.SdoStatic && loginType != LoginType.WeGameToken)
+            var accountType = loginType switch
             {
-                inputPassword = string.Empty;
-            }
-            else
-            {
-                inputPassword = inputPassword.Trim();
-            }
+                LoginType.WeGameSid => XivAccountType.WeGameSid,
+                LoginType.WeGameToken => XivAccountType.WeGame,
+                LoginType.SdoStatic or LoginType.SdoSlide or LoginType.SdoQrCode => XivAccountType.Sdo
+            };
 
-            if (loginType == LoginType.SdoStatic)
+            try
             {
-                serect = (inputPassword == PresudoPassword) ? string.Empty : inputPassword;
-            }
-
-            if (loginType == LoginType.WeGameSid)
-            {
-                // 选择WeGameSid登录时，忽略已经输入的密码框里面的内容，并打开自动登录
-                doingAutoLogin = true;
-            }
-            if (doingAutoLogin && loginType != LoginType.SdoQrCode)
-            {
-                var accountType = loginType switch
-                {
-                    LoginType.WeGameSid => XivAccountType.WeGameSid,
-                    LoginType.WeGameToken => XivAccountType.WeGame,
-                    LoginType.SdoStatic or LoginType.SdoSlide or LoginType.SdoQrCode => XivAccountType.Sdo
-                };
-
                 var savedAccount = AccountManager.Accounts.FirstOrDefault(x => x.UserName == username && x.AccountType == accountType);
-                if (savedAccount != null)
+                switch (loginType)
                 {
-                    try
-                    {
-                        switch (loginType)
+                    case LoginType.SdoStatic:
+                        if (!inputPassword.IsNullOrEmpty())
                         {
-                            case LoginType.SdoStatic:
-                                if (inputPassword.IsNullOrEmpty())
-                                {
-                                    serect = await AccountManager.CredProvider.Decrypt(savedAccount.Password);
-                                }
-                                else
-                                {
-                                    serect = inputPassword;
-                                }
-                                finalLoginType = LoginType.SdoStatic;
-                                ArgumentException.ThrowIfNullOrEmpty(serect, "静态登录密码");
-                                break;
-                            case LoginType.SdoSlide:
-                                //case LoginType.SdoStatic:
-                                if (!savedAccount.AutoLoginSessionKey.IsNullOrEmpty())
-                                {
-                                    serect = await AccountManager.CredProvider.Decrypt(savedAccount.AutoLoginSessionKey);
-                                    ArgumentException.ThrowIfNullOrEmpty(serect, "自动登录密钥");
-                                    finalLoginType = LoginType.AutoLoginSession;
-                                }
-                                else
-                                {
-                                    finalLoginType = LoginType.SdoSlide;
-                                }
-                                break;
-                            case LoginType.WeGameToken:
-                                if (inputPassword.IsNullOrEmpty())
-                                {
-                                    serect = await AccountManager.CredProvider.Decrypt(serect);
-                                    finalLoginType = LoginType.AutoLoginSession;
-                                }
-                                else
-                                {
-                                    finalLoginType = LoginType.WeGameToken;
-                                    serect = inputPassword;
-                                }
-                                ArgumentException.ThrowIfNullOrEmpty(serect, "自动登录密钥或者Token");
-                                break;
-                            case LoginType.WeGameSid:
-                                serect = savedAccount.TestSID;
-                                serect = await AccountManager.CredProvider.Decrypt(serect);
-                                if (!readWeGameInfo)
-                                    ArgumentException.ThrowIfNullOrEmpty(serect, "WeGame SID");
-                                finalLoginType = LoginType.WeGameSid;
-                                break;
+                            serect = inputPassword;
                         }
-
-
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.Error(ex, "Failed to decrypt password");
-                        CustomMessageBox.Show(
-                            ex.ToString(),
-                            "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error, parentWindow: _window);
-                        finalLoginType = loginType;
-                    }
-                }
-                else if (loginType == LoginType.WeGameSid && !readWeGameInfo)
-                {
-                    readWeGameInfo = true;
-                }
-            }
-
-            if (loginType == LoginType.WeGameSid)
-            {
-                if (!App.Settings.HasAgreeWeGameUsage.GetValueOrDefault(false))
-                {
-                    var readWeGameUsageAsk = CustomMessageBox.Builder
-                        .NewFrom(
-                        """
+                        else if (savedAccount != null)
+                        {
+                            serect = await AccountManager.Decrypt(savedAccount.Password);
+                        }
+                        ArgumentException.ThrowIfNullOrEmpty(username, "静态登录用户名");
+                        ArgumentException.ThrowIfNullOrEmpty(serect, "静态登录密码");
+                        finalLoginType = LoginType.SdoStatic;
+                        break;
+                    case LoginType.WeGameSid:
+                        if (!App.Settings.HasAgreeWeGameUsage.GetValueOrDefault(false))
+                        {
+                            var readWeGameUsageAsk = CustomMessageBox.Builder
+                                .NewFrom(
+                                """
                         为保障您的账号安全，请在使用本功能前仔细阅读以下内容：
                         🔐 功能原理说明
                         本工具通过读取最终幻想14游戏中WeGame平台生成的会话密钥实现快速启动功能，不会对WeGame客户端进行任何修改，也不会获取您的WeGame账号密码等敏感信息。
@@ -454,42 +373,95 @@ namespace XIVLauncher.Windows.ViewModel
 
                         点击【确认使用】即表示您已理解：妥善保管设备安全是密钥有效性的最终保障，建议每30天通过官方客户端完整登录一次以保持最佳安全性
                         """)
-                        .WithImage(MessageBoxImage.Warning)
-                        .WithButtons(MessageBoxButton.YesNo)
-                        .WithYesButtonText("确认使用")
-                        .WithCaption("WeGame SID登录功能说明")
-                        .WithYesCountdown(15)
-                        .WithParentWindow(_window)
-                        .Show();
+                                .WithImage(MessageBoxImage.Warning)
+                                .WithButtons(MessageBoxButton.YesNo)
+                                .WithYesButtonText("确认使用")
+                                .WithCaption("WeGame SID登录功能说明")
+                                .WithYesCountdown(15)
+                                .WithParentWindow(_window)
+                                .Show();
 
-                    if (readWeGameUsageAsk == MessageBoxResult.No)
-                    {
-                        App.Settings.HasAgreeWeGameUsage = false;
-                        return;
-                    }
-                    else
-                    {
-                        App.Settings.HasAgreeWeGameUsage = true;
-                    }
-                }
+                            if (readWeGameUsageAsk == MessageBoxResult.No)
+                            {
+                                App.Settings.HasAgreeWeGameUsage = false;
+                                return;
+                            }
+                            else
+                            {
+                                App.Settings.HasAgreeWeGameUsage = true;
+                            }
+                        }
 
-                readWeGameInfo = username.IsNullOrEmpty() || serect.IsNullOrEmpty() ? true : readWeGameInfo;
+                        doingAutoLogin = true;
+                        if (!readWeGameInfo && savedAccount != null)
+                        {
+                            serect = await AccountManager.Decrypt(savedAccount.TestSID);
+                        }
 
-                // process expire sid time
-                if (readWeGameInfo)
-                {
-                    var loginData = await ReadWegameInfo(username, Area.Areaid);
-                    if (loginData == null) { return; }
-                    if (loginData.SndaID.IsNullOrEmpty() || loginData.SessionId.IsNullOrEmpty())
-                    {
-                        throw new Exception("获取WeGame登录信息失败");
-                    }
-                    username = loginData.SndaID;
-                    serect = loginData.SessionId;
-                    var areaId = loginData.Args.Where(x => x.Contains("AreaID=")).Select(x => x.Split('=')[1]).First();
-                    Area = this.SdoAreas.FirstOrDefault(x => x.Areaid == areaId);
+                        readWeGameInfo = username.IsNullOrEmpty() || serect.IsNullOrEmpty();
+
+                        if (readWeGameInfo)
+                        {
+                            var loginData = await ReadWegameInfo(username, Area.Areaid);
+                            if (loginData == null) { return; }
+                            if (loginData.SndaID.IsNullOrEmpty() || loginData.SessionId.IsNullOrEmpty())
+                            {
+                                throw new Exception("获取WeGame登录信息失败");
+                            }
+                            username = loginData.SndaID;
+                            serect = loginData.SessionId;
+                            var areaId = loginData.Args.Where(x => x.Contains("AreaID=")).Select(x => x.Split('=')[1]).First();
+                            Area = this.SdoAreas.FirstOrDefault(x => x.Areaid == areaId);
+                        }
+                        finalLoginType = LoginType.WeGameSid;
+                        break;
+                    case LoginType.WeGameToken:
+                        if (inputPassword.IsNullOrEmpty())
+                        {
+                            serect = await AccountManager.CredProvider.Decrypt(savedAccount.AutoLoginSessionKey);
+                            finalLoginType = LoginType.AutoLoginSession;
+                        }
+                        if (serect.IsNullOrEmpty())
+                        {
+                            serect = inputPassword;
+                            finalLoginType = LoginType.WeGameToken;
+                        }
+                        ArgumentException.ThrowIfNullOrEmpty(serect, "自动登录密钥或者Token");
+                        break;
+                    case LoginType.SdoSlide:
+                        if (savedAccount != null && doingAutoLogin)
+                        {
+                            serect = await AccountManager.Decrypt(savedAccount.AutoLoginSessionKey);
+                            finalLoginType = LoginType.AutoLoginSession;
+                        }
+                        if (serect.IsNullOrEmpty())
+                        {
+                            finalLoginType = LoginType.SdoSlide;
+                        }
+                        ArgumentException.ThrowIfNullOrEmpty(username, "一键滑动登录用户名");
+                        break;
+                    case LoginType.SdoQrCode:
+                        break;
                 }
             }
+
+            catch (Exception ex)
+            {
+                if (ex is ArgumentException argEx)
+                {
+                    Log.Error(ex, "Failed to encrypt text");
+                    CustomMessageBox.Show(
+                    $"{argEx.ParamName}不能为空",
+                        "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    return;
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+
             var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, action).ConfigureAwait(false);
 
             if (loginResult == null)
@@ -529,16 +501,16 @@ namespace XIVLauncher.Windows.ViewModel
 
                     if (doingAutoLogin && accountToSave.AccountType != XivAccountType.WeGameSid)
                     {
-                        accountToSave.AutoLoginSessionKey = await AccountManager.CredProvider.Encrypt(loginResult.OauthLogin.AutoLoginSessionKey);
+                        accountToSave.AutoLoginSessionKey = await AccountManager.Encrypt(loginResult.OauthLogin.AutoLoginSessionKey);
                         if (finalLoginType == LoginType.SdoStatic)
                         {
-                            accountToSave.Password = await AccountManager.CredProvider.Encrypt(serect);
+                            accountToSave.Password = await AccountManager.Encrypt(serect);
                         }
                     }
 
                     if (accountToSave.AccountType == XivAccountType.WeGameSid)
                     {
-                        accountToSave.TestSID = await AccountManager.CredProvider.Encrypt(serect);
+                        accountToSave.TestSID = await AccountManager.Encrypt(serect);
                         //accountToSave.TestSID = await AccountManager.CredProvider.Encrypt("password");
                     }
                     accountToSave.GenerateId();
@@ -555,7 +527,7 @@ namespace XIVLauncher.Windows.ViewModel
                         loginResult.OauthLogin?.Playable);
             await AccountManager.CredProvider.ClearCache();
             serect = null;
-            return;
+            //return;
             if (await TryProcessLoginResult(loginResult, false, action).ConfigureAwait(false))
             {
                 if (App.Settings.ExitLauncherAfterGameExit ?? true)
