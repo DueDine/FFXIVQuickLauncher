@@ -132,7 +132,7 @@ public class DalamudUpdater
         });
     }
 
-    private async Task<DalamudVersionInfo?> GetVersionInfo()
+    private async Task<DalamudVersionInfo?> GetDalamudVersionInfo()
     {
         using var client = new HttpClient();
         client.Timeout = this.defaultTimeout;
@@ -148,9 +148,6 @@ public class DalamudUpdater
         return versionInfoRelease;
     }
 
-    /// <summary>
-    ///     更新Dalamud核心组件及其依赖的异步方法
-    /// </summary>
     private async Task UpdateDalamud()
     {
         var settings = DalamudSettings.GetSettings(this.configDirectory);
@@ -158,9 +155,9 @@ public class DalamudUpdater
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
         // 还是从 ottercorp 那里获取版本信息用于运行时下载
-        var versionInfoRelease = await this.GetVersionInfo().ConfigureAwait(false);
+        var versionInfoRelease = await this.GetDalamudVersionInfo().ConfigureAwait(false);
         var versionInfoJson    = JsonConvert.SerializeObject(versionInfoRelease);
-        var onlineHash         = await this.GetLatestReleaseHashAsync();
+        var onlineHash         = await this.GetDalamudHashAsync();
 
         var addonPath          = new DirectoryInfo(Path.Combine(this.addonDirectory.FullName, "Hooks"));
         var currentVersionPath = new DirectoryInfo(Path.Combine(addonPath.FullName,           versionInfoRelease.AssemblyVersion));
@@ -172,19 +169,18 @@ public class DalamudUpdater
             new(Path.Combine(this.Runtime.FullName, "shared", "Microsoft.WindowsDesktop.App", versionInfoRelease.RuntimeVersion))
         };
 
-        // 检查当前版本是否存在且完整
-        if (!currentVersionPath.Exists || !IsIntegrity(currentVersionPath, onlineHash))
+        // 处理 Dalamud
+        if (!currentVersionPath.Exists || !CheckDalamudIntegrity(currentVersionPath, onlineHash))
         {
             Log.Information("[DUPDATE] 未找到有效版本，开始重新下载");
-            this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud); // 更新 UI 进度显示
+            this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Dalamud);
 
             try
             {
                 // 下载 Dalamud
                 await this.DownloadDalamud(currentVersionPath).ConfigureAwait(true);
-                CleanUpOld(addonPath, versionInfoRelease.AssemblyVersion); // 清理旧版本
+                CleanUpOld(addonPath, versionInfoRelease.AssemblyVersion);
 
-                // 重置UID缓存
                 this.cache?.Reset();
             }
             catch (Exception ex)
@@ -193,7 +189,7 @@ public class DalamudUpdater
             }
         }
 
-        // 处理运行时
+        // 处理 Runtime
         if (versionInfoRelease.RuntimeRequired || settings.DoDalamudRuntime)
         {
             Log.Information("[DUPDATE] 正在准备 .NET 运行时 {0}", versionInfoRelease.RuntimeVersion);
@@ -233,24 +229,25 @@ public class DalamudUpdater
             }
         }
 
-        // 处理资源文件
+        // 处理 Asset
         Log.Verbose("[DUPDATE] 正在验证资源文件...");
         var assetVer = 0;
 
         try
         {
             this.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Assets);
-            this.ReportOverlayProgress(null, 0, null); // 重置进度条
+            this.ReportOverlayProgress(null, 0, null);
             var assetResult = await AssetManager.EnsureAssets(this, this.assetDirectory).ConfigureAwait(true);
-            this.AssetDirectory = assetResult.AssetDir; // 更新资源目录路径
-            assetVer            = assetResult.Version;  // 获取资源版本
+            this.AssetDirectory = assetResult.AssetDir;
+            assetVer            = assetResult.Version;
         }
         catch (Exception ex)
         {
             throw new DalamudIntegrityException("资源文件验证失败", ex);
         }
 
-        if (!IsIntegrity(currentVersionPath, onlineHash)) throw new DalamudIntegrityException("完整性验证最终失败");
+        if (!CheckDalamudIntegrity(currentVersionPath, onlineHash)) 
+            throw new DalamudIntegrityException("完整性验证最终失败");
 
         WriteVersionJson(currentVersionPath, versionInfoJson);
 
@@ -262,55 +259,26 @@ public class DalamudUpdater
         this.ReportOverlayProgress(null, 0, null);
     }
 
-    private string GetLocalRuntimeVersion(FileInfo versionFile)
-    {
-        // This is the version we first shipped. We didn't write out a version file, so we can't check it.
-        var localVersion = "5.0.6";
+    #region Dalamud
 
-        try
-        {
-            if (versionFile.Exists)
-                localVersion = File.ReadAllText(versionFile.FullName);
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[DUPDATE] Could not read local runtime version.");
-        }
-
-        return localVersion;
-    }
-    
-    private static bool CanRead(FileInfo info)
-    {
-        try
-        {
-            using var stream = info.OpenRead();
-            stream.ReadByte();
-        }
-        catch { return false; }
-
-        return true;
-    }
-
-    public static bool IsIntegrity(DirectoryInfo addonPath, string onlineHash)
+    public static bool CheckDalamudIntegrity(DirectoryInfo addonPath, string onlineHash)
     {
         var files = addonPath.GetFiles();
 
         try
         {
-            if (!CanRead(files.First(x => x.Name    == "Dalamud.Injector.exe"))
-                || !CanRead(files.First(x => x.Name == "Dalamud.dll"))
-                || !CanRead(files.First(x => x.Name == "ImGuiScene.dll")))
+            if (!CanRead(files.First(x => x.Name == "Dalamud.Injector.exe")) || 
+                !CanRead(files.First(x => x.Name == "Dalamud.dll"))          || 
+                !CanRead(files.First(x => x.Name == "ImGuiScene.dll")))
             {
-                Log.Error("[DUPDATE] Can't open files for read");
+                Log.Error("[DUPDATE] 无法打开核心文件");
                 return false;
             }
 
             var hashesPath = Path.Combine(addonPath.FullName, "hashes.json");
-
             if (!File.Exists(hashesPath))
             {
-                Log.Error("[DUPDATE] No hashes.json");
+                Log.Error("[DUPDATE] 无 hashes.json");
                 return false;
             }
 
@@ -329,43 +297,12 @@ public class DalamudUpdater
         }
         catch (Exception ex)
         {
-            Log.Error(ex, "[DUPDATE] No dalamud integrity");
+            Log.Error(ex, "[DUPDATE] 无 Dalamud 完整性");
             return false;
         }
     }
 
-    private static bool CheckIntegrity(DirectoryInfo directory, string hashesJson)
-    {
-        try
-        {
-            Log.Verbose("[DUPDATE] Checking integrity of {Directory}", directory.FullName);
-
-            var hashes = JsonConvert.DeserializeObject<Dictionary<string, string>>(hashesJson);
-
-            foreach (var hash in hashes)
-            {
-                var file   = Path.Combine(directory.FullName, hash.Key.Replace("\\", "/"));
-                var hashed = ComputeFileHash(file);
-
-                if (hashed != hash.Value)
-                {
-                    Log.Error("[DUPDATE] Integrity check failed for {0} ({1} - {2})", file, hash.Value, hashed);
-                    return false;
-                }
-
-                Log.Verbose("[DUPDATE] Integrity check OK for {0} ({1})", file, hashed);
-            }
-        }
-        catch (Exception ex)
-        {
-            Log.Error(ex, "[DUPDATE] Integrity check failed");
-            return false;
-        }
-
-        return true;
-    }
-
-    public async Task<string> GetLatestReleaseHashAsync()
+    public async Task<string> GetDalamudHashAsync()
     {
         using var httpClient = new HttpClient();
         httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (compatible; MyApp/1.0)");
@@ -388,7 +325,7 @@ public class DalamudUpdater
                     if (string.IsNullOrWhiteSpace(downloadUrl)) continue;
                     
                     var downloadPath = PlatformHelpers.GetTempFileName();
-                    await DownloadFile(downloadUrl, downloadPath, TimeSpan.FromSeconds(30));
+                    await DownloadFile($"https://gh.atmoomen.top/{downloadUrl}", downloadPath, TimeSpan.FromSeconds(30));
                     var hash = ComputeFileHash(downloadPath);
                     File.Delete(downloadPath);
                     return hash;
@@ -399,51 +336,12 @@ public class DalamudUpdater
         }
         catch (HttpRequestException e) { throw new Exception("Error accessing GitHub API: " + e.Message); }
     }
-
-    private static string ComputeFileHash(string path)
-    {
-        try
-        {
-            using var stream = File.OpenRead(path);
-            using var md5    = MD5.Create();
-
-            var hashHash = BitConverter.ToString(md5.ComputeHash(stream)).ToUpperInvariant().Replace("-", string.Empty);
-            return hashHash;
-        }
-        catch (Exception e)
-        {
-            throw new Exception("Error computing file hash: " + e.Message);
-        }
-    }
-
-    private static void CleanUpOld(DirectoryInfo addonPath, string currentVer)
-    {
-        if (!addonPath.Exists)
-            return;
-
-        foreach (var directory in addonPath.GetDirectories())
-        {
-            if (directory.Name == "dev" || directory.Name == currentVer) continue;
-
-            try { directory.Delete(true); }
-            catch
-            {
-                // ignored
-            }
-        }
-    }
-
-    private static void WriteVersionJson(DirectoryInfo addonPath, string info)
-    {
-        File.WriteAllText(Path.Combine(addonPath.FullName, "version.json"), info);
-    }
-
+    
     private async Task DownloadDalamud(DirectoryInfo addonPath)
     {
         const string REPO_API                 = "https://api.github.com/repos/AtmoOmen/Dalamud/releases/latest";
         const string USER_AGENT               = "Mozilla/5.0 (compatible; MyApp/1.0)";
 
-        // 清理并创建目标目录
         if (addonPath.Exists) addonPath.Delete(true);
         addonPath.Create();
 
@@ -452,11 +350,9 @@ public class DalamudUpdater
 
         try
         {
-            // 获取最新Release信息
             var response = await httpClient.GetAsync(REPO_API);
             response.EnsureSuccessStatusCode();
 
-            // 解析JSON数据
             var       json    = await response.Content.ReadAsStringAsync();
             using var jsonDoc = JsonDocument.Parse(json);
             var       assets  = jsonDoc.RootElement.GetProperty("assets");
@@ -470,7 +366,7 @@ public class DalamudUpdater
 
                 if (fileName != "latest.7z") continue;
                 
-                await this.DownloadFile(downloadUrl, downloadPath, this.defaultTimeout).ConfigureAwait(false);
+                await this.DownloadFile($"https://gh.atmoomen.top/{downloadUrl}", downloadPath, this.defaultTimeout).ConfigureAwait(false);
                 PlatformHelpers.Un7za(downloadPath, addonPath.FullName);
                 File.Delete(downloadPath);
                 break;
@@ -482,11 +378,11 @@ public class DalamudUpdater
                 PlatformHelpers.DeleteAndRecreateDirectory(devPath);
                 PlatformHelpers.CopyFilesRecursively(addonPath, devPath);
             }
-            catch (Exception ex) { Log.Error(ex, "[DUPDATE] 复制到dev目录失败"); }
+            catch (Exception ex) { Log.Error(ex, "[DUPDATE] 复制到 dev 目录失败"); }
         }
         catch (HttpRequestException e)
         {
-            Log.Error(e, "[DUPDATE] GitHub API请求失败");
+            Log.Error(e, "[DUPDATE] GitHub API 请求失败");
             throw;
         }
         catch (Exception ex)
@@ -494,6 +390,28 @@ public class DalamudUpdater
             Log.Error(ex, "[DUPDATE] 下载过程中发生错误");
             throw;
         }
+    }
+
+    #endregion
+
+    #region Runtime
+
+    private string GetLocalRuntimeVersion(FileInfo versionFile)
+    {
+        // This is the version we first shipped. We didn't write out a version file, so we can't check it.
+        var localVersion = "5.0.6";
+
+        try
+        {
+            if (versionFile.Exists)
+                localVersion = File.ReadAllText(versionFile.FullName);
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[DUPDATE] Could not read local runtime version.");
+        }
+
+        return localVersion;
     }
     
     private async Task<bool> CheckRuntimeHashes(DirectoryInfo runtimePath, string version)
@@ -529,13 +447,10 @@ public class DalamudUpdater
     private async Task DownloadRuntime(DirectoryInfo runtimePath, string version)
     {
         // Ensure directory exists
-        if (!runtimePath.Exists)
-            runtimePath.Create();
-        else
-        {
+        if (runtimePath.Exists)
             runtimePath.Delete(true);
-            runtimePath.Create();
-        }
+
+        runtimePath.Create();
 
         var dotnetUrl  = $"https://aonyx.ffxiv.wang/Dalamud/Release/Runtime/DotNet/{version}";
         var desktopUrl = $"https://aonyx.ffxiv.wang/Dalamud/Release/Runtime/WindowsDesktop/{version}";
@@ -554,6 +469,90 @@ public class DalamudUpdater
         File.Delete(downloadPath);
     }
 
+    #endregion
+
+    private static bool CheckIntegrity(DirectoryInfo directory, string hashesJson)
+    {
+        try
+        {
+            Log.Verbose("[DUPDATE] 开始检查目录 {Directory} 的完整性", directory.FullName);
+
+            var hashes = JsonConvert.DeserializeObject<Dictionary<string, string>>(hashesJson);
+            if (hashes == null) throw new ArgumentNullException(nameof(hashes));
+
+            foreach (var hash in hashes)
+            {
+                var file   = Path.Combine(directory.FullName, hash.Key.Replace("\\", "/"));
+                var hashed = ComputeFileHash(file);
+
+                if (hashed != hash.Value)
+                {
+                    Log.Error("[DUPDATE] 完整性检查失败: {0} ({1} - {2})", file, hash.Value, hashed);
+                    return false;
+                }
+
+                Log.Verbose("[DUPDATE] 完整性检查通过: {0} ({1})", file, hashed);
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "[DUPDATE] 完整性检查失败");
+            return false;
+        }
+
+        return true;
+    }
+    
+    private static bool CanRead(FileInfo info)
+    {
+        try
+        {
+            using var stream = info.OpenRead();
+            stream.ReadByte();
+        }
+        catch { return false; }
+
+        return true;
+    }
+    
+    private static string ComputeFileHash(string path)
+    {
+        try
+        {
+            using var stream = File.OpenRead(path);
+            using var md5    = MD5.Create();
+
+            var hashHash = BitConverter.ToString(md5.ComputeHash(stream)).ToUpperInvariant().Replace("-", string.Empty);
+            return hashHash;
+        }
+        catch (Exception e)
+        {
+            throw new Exception("Error computing file hash: " + e.Message);
+        }
+    }
+    
+    private static void CleanUpOld(DirectoryInfo addonPath, string currentVer)
+    {
+        if (!addonPath.Exists)
+            return;
+
+        foreach (var directory in addonPath.GetDirectories())
+        {
+            if (directory.Name == "dev" || directory.Name == currentVer) continue;
+
+            try { directory.Delete(true); }
+            catch
+            {
+                // ignored
+            }
+        }
+    }
+    
+    private static void WriteVersionJson(DirectoryInfo addonPath, string info)
+    {
+        File.WriteAllText(Path.Combine(addonPath.FullName, "version.json"), info);
+    }
+    
     public async Task DownloadFile(string url, string path, TimeSpan timeout)
     {
         if (this.forceProxy && url.Contains("/File/Get/")) url = url.Replace("/File/Get/", "/File/GetProxy/");
@@ -565,10 +564,4 @@ public class DalamudUpdater
     }
 }
 
-public class DalamudIntegrityException : Exception
-{
-    public DalamudIntegrityException(string msg, Exception? inner = null)
-        : base(msg, inner)
-    {
-    }
-}
+public class DalamudIntegrityException(string msg, Exception? inner = null) : Exception(msg, inner);
