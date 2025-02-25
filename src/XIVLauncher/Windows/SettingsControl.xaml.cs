@@ -19,6 +19,7 @@ using XIVLauncher.Common.Util;
 using XIVLauncher.Support;
 using XIVLauncher.Windows.ViewModel;
 using XIVLauncher.Accounts.Cred;
+using SharpCompress.Common;
 
 namespace XIVLauncher.Windows
 {
@@ -404,7 +405,7 @@ namespace XIVLauncher.Windows
                     this.ReloadSettings();
                     break;
                 case MessageBoxResult.No:
-                    MessageBox.Show(PackGenerator.SavePack());
+                    PackGenerator.PackAndShowMessage();
                     break;
                 case MessageBoxResult.Cancel:
                     return;

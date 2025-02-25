@@ -299,7 +299,10 @@ namespace XIVLauncher.Windows
         {
             Process.Start(new ProcessStartInfo($"{App.REPO_URL}/issues/new?assignees=octocat&labels=bug%2Ctriage&template=bugreport.yml") { UseShellExecute = true });
         }
-
+        private void PackTroubleshooting_OnClick(object sender, RoutedEventArgs e)
+        {
+            PackGenerator.PackAndShowMessage();
+        }
         public enum ExitOnCloseModes
         {
             DontExitOnClose,
