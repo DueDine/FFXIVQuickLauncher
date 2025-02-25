@@ -1,4 +1,1 @@
-* 新增了 Github API 速率达限的提示窗口
-* 合并了来自 ottercorp 的 XIVLauncherCN 更新:
-  * 修复快捷登录图标到桌面失败
-  * 手动注入增加管理员权限提示
+* 用 Cloudflare 包装了 Dalamud 资源文件的下载
