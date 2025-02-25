@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.CommandLine;
 using System.ComponentModel;
 using System.Data;
@@ -13,6 +14,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Castle.Core.Internal;
@@ -56,7 +58,7 @@ namespace XIVLauncher.Windows.ViewModel
         public Action ReloadHeadlines;
 
         public string Password { get; set; }
-        //public SdoArea SelectArea { get; set; }
+        public SdoArea[] SdoAreas { get; set; }
 
         public enum AfterLoginAction
         {
@@ -333,10 +335,7 @@ namespace XIVLauncher.Windows.ViewModel
             // TODO: 太jb乱了，得重构
             var finalLoginType = loginType;
             var serect = string.Empty;
-            if (loginType == LoginType.SdoStatic && inputPassword == PresudoPassword)
-            {
-                inputPassword = string.Empty;
-            }
+
             if (loginType != LoginType.SdoStatic && loginType != LoginType.WeGameToken)
             {
                 inputPassword = string.Empty;
@@ -345,6 +344,12 @@ namespace XIVLauncher.Windows.ViewModel
             {
                 inputPassword = inputPassword.Trim();
             }
+
+            if (loginType == LoginType.SdoStatic)
+            {
+                serect = (inputPassword == PresudoPassword) ? string.Empty : inputPassword;
+            }
+
             if (loginType == LoginType.WeGameSid)
             {
                 // 选择WeGameSid登录时，忽略已经输入的密码框里面的内容，并打开自动登录
@@ -429,11 +434,6 @@ namespace XIVLauncher.Windows.ViewModel
                     readWeGameInfo = true;
                 }
             }
-            else if (loginType == LoginType.SdoStatic)
-            {
-                serect = inputPassword;
-                finalLoginType = LoginType.SdoStatic;
-            }
 
             if (loginType == LoginType.WeGameSid)
             {
@@ -486,12 +486,15 @@ namespace XIVLauncher.Windows.ViewModel
                     }
                     username = loginData.SndaID;
                     serect = loginData.SessionId;
+                    var areaId = loginData.Args.Where(x => x.Contains("AreaID=")).Select(x => x.Split('=')[1]).First();
+                    Area = this.SdoAreas.FirstOrDefault(x => x.Areaid == areaId);
                 }
             }
             var loginResult = await TryLoginToGame(finalLoginType, loginType, username, serect, doingAutoLogin, action).ConfigureAwait(false);
 
             if (loginResult == null)
                 return;
+            loginResult.Area = Area;
             if (loginResult.State == Launcher.LoginState.NeedsPatchGame && action != AfterLoginAction.Repair)
             {
                 // 如果需要打补丁且登陆异常，登陆异常状态会覆盖掉NeedsPatchGame，除非和国际服一样，登陆成功才能获取到补丁信息
@@ -545,14 +548,14 @@ namespace XIVLauncher.Windows.ViewModel
                 }
             }
 
-            loginResult.Area = Area;
+
             Log.Information("[LR] {State} {NumPatches} {Playable}",
                         loginResult.State,
                         loginResult.PendingPatches?.Length,
                         loginResult.OauthLogin?.Playable);
             await AccountManager.CredProvider.ClearCache();
             serect = null;
-            //return;
+            return;
             if (await TryProcessLoginResult(loginResult, false, action).ConfigureAwait(false))
             {
                 if (App.Settings.ExitLauncherAfterGameExit ?? true)

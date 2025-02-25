@@ -268,6 +268,7 @@
                                                 Margin="0,8,0,0"
                                                 Height="24"
                                                 VerticalAlignment="Top"
+                                                ItemsSource="{Binding Path=SdoAreas}"  
                                                 SelectedItem="{Binding Path=Area}"  
                                                 SelectedValuePath="Areaid"
                                                 DisplayMemberPath="AreaName"
