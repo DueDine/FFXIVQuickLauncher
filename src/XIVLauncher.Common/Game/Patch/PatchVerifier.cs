@@ -16,6 +16,7 @@ using XIVLauncher.Common.Game.Exceptions;
 using XIVLauncher.Common.Patching.IndexedZiPatch;
 using XIVLauncher.Common.Patching.Util;
 using XIVLauncher.Common.PlatformAbstractions;
+using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Game.Patch
 {
@@ -72,7 +73,7 @@ namespace XIVLauncher.Common.Game.Patch
         public long Speed { get; private set; }
         public Exception LastException { get; private set; }
 
-        private const string BASE_URL = "https://s3.ffxiv.wang/xlassets/patchinfo/";
+        private const string BASE_URL = ServerAddress.S3Address + "/xlassets/patchinfo/";
 
         public enum VerifyState
         {

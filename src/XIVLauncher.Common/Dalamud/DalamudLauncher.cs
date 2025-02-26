@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -8,6 +8,7 @@ using System.Threading;
 using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.PlatformAbstractions;
+using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Dalamud
 {
@@ -49,7 +50,7 @@ namespace XIVLauncher.Common.Dalamud
             this.troubleshootingData = troubleshootingData;
         }
 
-        public const string REMOTE_BASE = "https://aonyx.ffxiv.wang/Dalamud/Release/VersionInfo?track=";
+        public const string REMOTE_BASE = ServerAddress.MainAddress + "/Dalamud/Release/VersionInfo?track=";
 
         public DalamudInstallState HoldForUpdate(DirectoryInfo gamePath)
         {

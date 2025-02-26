@@ -27,23 +27,23 @@ public class CompatibilityTools
 
 #if WINE_XIV_ARCH_LINUX
     // private const string WINE_XIV_RELEASE_URL = "https://github.com/goatcorp/wine-xiv-git/releases/download/8.5.r4.g4211bac7/wine-xiv-staging-fsync-git-arch-8.5.r4.g4211bac7.tar.xz";
-    private const string WINE_XIV_RELEASE_URL = "https://s3.ffxiv.wang/xlcore/deps/wine/arch/wine-xiv-staging-fsync-git-arch-8.5.r4.g4211bac7.tar.xz";
+    private const string WINE_XIV_RELEASE_URL = ServerAddress.S3Address + "/xlcore/deps/wine/arch/wine-xiv-staging-fsync-git-arch-8.5.r4.g4211bac7.tar.xz";
     private const string WINE_XIV_RELEASE_NAME = "wine-xiv-staging-fsync-git-8.5.r4.g4211bac7";
 #elif WINE_XIV_FEDORA_LINUX
     // private const string WINE_XIV_RELEASE_URL = "https://github.com/goatcorp/wine-xiv-git/releases/download/8.5.r4.g4211bac7/wine-xiv-staging-fsync-git-fedora-8.5.r4.g4211bac7.tar.xz";
-    private const string WINE_XIV_RELEASE_URL = "https://s3.ffxiv.wang/xlcore/deps/wine/fedora/wine-xiv-staging-fsync-git-fedora-8.5.r4.g4211bac7.tar.xz";
+    private const string WINE_XIV_RELEASE_URL = ServerAddress.S3Address + "/xlcore/deps/wine/fedora/wine-xiv-staging-fsync-git-fedora-8.5.r4.g4211bac7.tar.xz";
     private const string WINE_XIV_RELEASE_NAME = "wine-xiv-staging-fsync-git-8.5.r4.g4211bac7";
 #elif WINE_XIV_MACOS
     // Wine from https://softwareupdate.xivmac.com/sites/default/files/update_data/XIV%20on%20Mac4.17.1.tar.xz;
-    private const string WINE_XIV_RELEASE_URL = "https://s3.ffxiv.wang/xlcore/deps/wine/osx/xom-4.17.1/wine.tar.gz";
+    private const string WINE_XIV_RELEASE_URL = ServerAddress.S3Address + "/xlcore/deps/wine/osx/xom-4.17.1/wine.tar.gz";
     private const string WINE_XIV_RELEASE_NAME = "wine";
 #else
     // private const string WINE_XIV_RELEASE_URL = "https://github.com/goatcorp/wine-xiv-git/releases/download/8.5.r4.g4211bac7/wine-xiv-staging-fsync-git-ubuntu-8.5.r4.g4211bac7.tar.xz";
-    private const string WINE_XIV_RELEASE_URL = "https://s3.ffxiv.wang/xlcore/deps/wine/ubuntu/wine-xiv-staging-fsync-git-ubuntu-8.5.r4.g4211bac7.tar.xz";
+    private const string WINE_XIV_RELEASE_URL = ServerAddress.S3Address + "/xlcore/deps/wine/ubuntu/wine-xiv-staging-fsync-git-ubuntu-8.5.r4.g4211bac7.tar.xz";
     private const string WINE_XIV_RELEASE_NAME = "wine-xiv-staging-fsync-git-8.5.r4.g4211bac7";
 #endif
 
-    private const string SD_WINE_XIV_RELEASE_URL = "https://s3.ffxiv.wang/xlcore/deps/wine/ubuntu/wine-xiv-staging-fsync-git-ubuntu-8.5.r4.g4211bac7.tar.xz";
+    private const string SD_WINE_XIV_RELEASE_URL = ServerAddress.S3Address + "/xlcore/deps/wine/ubuntu/wine-xiv-staging-fsync-git-ubuntu-8.5.r4.g4211bac7.tar.xz";
     private const string SD_WINE_XIV_RELEASE_NAME = "wine-xiv-staging-fsync-git-8.5.r4.g4211bac7";
 
     public bool IsToolReady { get; private set; }

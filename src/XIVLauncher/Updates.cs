@@ -26,8 +26,8 @@ namespace XIVLauncher
         private const string LEASE_META_URL = "http://localhost:5025/Launcher/GetLease";
         private const string LEASE_FILE_URL = "http://localhost:5025/Launcher/GetFile";
 #else
-        private const string LEASE_META_URL = "https://aonyx.ffxiv.wang/Launcher/GetLease";
-        private const string LEASE_FILE_URL = "https://aonyx.ffxiv.wang/Launcher/GetFile";
+        private const string LEASE_META_URL = ServerAddress.MainAddress + "/Launcher/GetLease";
+        private const string LEASE_FILE_URL = ServerAddress.MainAddress + "/Launcher/GetFile";
 #endif
 
         private const string TRACK_RELEASE    = "Release";
