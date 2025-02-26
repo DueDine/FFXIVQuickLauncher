@@ -57,6 +57,8 @@ namespace XIVLauncher.Settings
         bool? HasAgreeWeGameUsage { get; set; }
         bool? ShowWeGameTokenLogin { get; set; }
         CredType? CredType { get; set; }
+
+        bool? EnableDebugLog { get; set; }
         #endregion
     }
 }

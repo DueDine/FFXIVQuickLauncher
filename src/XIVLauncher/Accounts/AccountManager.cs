@@ -11,6 +11,9 @@ using System.Drawing;
 using XIVLauncher.Accounts.Cred;
 using XIVLauncher.Accounts.Cred.CredProviders;
 using Castle.Core.Internal;
+using System.Threading.Tasks;
+using System.Windows;
+using XIVLauncher.Windows;
 namespace XIVLauncher.Accounts
 {
     public class AccountManager
@@ -49,6 +52,53 @@ namespace XIVLauncher.Accounts
             ChangeCredType(setting.CredType.GetValueOrDefault(CredType.WindowsCredManager));
         }
 
+        public async Task<string> Encrypt(string text)
+        {
+            try
+            {
+                if (text is null)
+                    return null;
+
+                if (this.CredProvider == null)
+                {
+                    throw new Exception("CredProvider is null");
+                }
+                return await this.CredProvider.Encrypt(text);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to encrypt text");
+                CustomMessageBox.Show(
+                ex.ToString(),
+                    "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            return null;
+        }
+
+        public async Task<string> Decrypt(string text)
+        {
+            try
+            {
+                if (text is null)
+                    return null;
+
+                if (this.CredProvider == null)
+                {
+                    throw new Exception("CredProvider is null");
+                }
+                return await this.CredProvider.Decrypt(text);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to encrypt text");
+                CustomMessageBox.Show(
+                ex.ToString(),
+                    "XIVLauncher Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            return null;
+        }
+
+
         public async void ChangeCredType(CredType? type)
         {
             if (type == this.CurrentCredType)
@@ -61,7 +111,8 @@ namespace XIVLauncher.Accounts
                 throw new Exception($"Cred type: {type} not supported");
             }
 
-            if (oldCred != null) {
+            if (oldCred != null)
+            {
                 var testText = EncryptionHelper.GetRandomHexString(32);
                 var encrypted = await newCred.Encrypt(testText);
                 var decrypted = await newCred.Decrypt(encrypted);

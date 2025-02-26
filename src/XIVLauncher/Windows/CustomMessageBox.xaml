@@ -1,4 +1,4 @@
-﻿<Window
+<Window
     x:Class="XIVLauncher.Windows.CustomMessageBox"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -69,6 +69,13 @@
                 <StackPanel Orientation="Horizontal">
                     <materialDesign:PackIcon Kind="Github" />
                     <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="{Binding ReportErrorLoc}"/>
+                </StackPanel>
+            </Button>
+            <Button Style="{DynamicResource MaterialDesignFlatButton}" HorizontalAlignment="Left"
+                    x:Name="PackTroubleshooting" Margin="5,0,0,0" Click="PackTroubleshooting_OnClick">
+                <StackPanel Orientation="Horizontal">
+                    <materialDesign:PackIcon Kind="Bug" />
+                    <TextBlock Margin="8 0 0 0" VerticalAlignment="Center" Text="打包日志"/>
                 </StackPanel>
             </Button>
             <Button x:Name="Button1" Margin="5,0,0,0" HorizontalAlignment="Right" Click="Button1_Click" Content="Button1" MinWidth="80"/>

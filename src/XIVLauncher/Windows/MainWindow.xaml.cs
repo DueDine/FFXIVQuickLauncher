@@ -42,14 +42,12 @@ namespace XIVLauncher.Windows
         private int _currentBannerIndex;
         private bool _everShown = false;
 
-        private SdoArea[] _sdoAreas;
+        //private SdoArea[] _sdoAreas;
         class BannerDotInfo
         {
             public bool Active { get; set; }
             public int Index { get; set; }
         }
-
-        private List<int> oldPidList = new();
 
         private ObservableCollection<BannerDotInfo> _bannerDotList;
 
@@ -117,15 +115,22 @@ namespace XIVLauncher.Windows
 
         private async Task SetupServers()
         {
+            var areas = new SdoArea[1] { new SdoArea { AreaName = "获取大区失败", Areaid = "-1" } };
             try
             {
-                _sdoAreas = await SdoArea.Get();
+                areas = await SdoArea.Get();
             }
             catch (Exception ex)
             {
-                _sdoAreas = new SdoArea[1] { new SdoArea { AreaName = "获取大区失败", Areaid = "-1" } };
-                throw ex;
+
+                throw;
             }
+            Dispatcher.Invoke(() =>
+            {
+                Model.SdoAreas = areas.ToArray();
+                ServerSelection.ItemsSource = Model.SdoAreas;
+                ServerSelection.SelectedIndex = 0;
+            });
         }
 
         private async Task SetupHeadlines()
@@ -368,11 +373,9 @@ namespace XIVLauncher.Windows
             }
             Task.Run(async () =>
             {
-                await SetupServers();
+                SetupServers().Wait();
                 Dispatcher.Invoke(() =>
                 {
-                    ServerSelection.ItemsSource = _sdoAreas;
-                    ServerSelection.SelectedIndex = 0;
                     if (savedAccount != null)
                         SwitchAccount(savedAccount, false); ;
                 });
@@ -595,7 +598,7 @@ namespace XIVLauncher.Windows
             //Model.IsOtp = account.UseOtp;
             //Model.IsSteam = account.UseSteamServiceAccount;
             Model.IsFastLogin = account.AutoLogin;
-            Model.Area = _sdoAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
+            Model.Area = Model.SdoAreas.Where(x => x.AreaName == account.AreaName).FirstOrDefault();
             LoginPassword.Password = string.Empty;
 
             switch (account.AccountType)

@@ -1,7 +1,9 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
+using System.Windows;
 using XIVLauncher.Common;
 using ZipArchive = System.IO.Compression.ZipArchive;
 
@@ -25,6 +27,7 @@ namespace XIVLauncher.Support
             var dalamudInjectorLogFile = new FileInfo(Path.Combine(Paths.RoamingPath, "dalamud.injector.log"));
             var dalamudBootLogFile = new FileInfo(Path.Combine(Paths.RoamingPath, "dalamud.boot.log"));  
             var ariaLogFile = new FileInfo(Path.Combine(Paths.RoamingPath, "aria.log"));
+            var argReaderLogFile = new FileInfo(Path.Combine(Paths.RoamingPath, "argReader.log"));
 
             AddIfExist(xlLogFile, archive);
             AddIfExist(patcherLogFile, archive);
@@ -32,6 +35,7 @@ namespace XIVLauncher.Support
             AddIfExist(dalamudInjectorLogFile, archive);
             AddIfExist(dalamudBootLogFile, archive);
             AddIfExist(ariaLogFile, archive);
+            AddIfExist(argReaderLogFile, archive);
 
             return outFile.FullName;
         }
@@ -46,6 +50,15 @@ namespace XIVLauncher.Support
                 stream.CopyTo(entryStream);
                 //zip.CreateEntryFromFile(file.FullName, file.Name);
             }
+        }
+
+        public static void PackAndShowMessage()
+        {
+            var packFullName = SavePack();
+            // Use "explorer.exe" to open the folder and select the file
+            Process.Start("explorer.exe", $"/select,\"{Path.GetFullPath(packFullName)}\"");
+            var message = $"日志文件已打包: {packFullName}";
+            MessageBox.Show(message, "Troubleshooting", MessageBoxButton.OK, MessageBoxImage.Information);
         }
     }
 }
