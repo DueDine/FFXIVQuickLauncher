@@ -59,14 +59,14 @@ namespace XIVLauncher.Common.Dalamud
                 if (this.updater.State == DalamudUpdater.DownloadState.NoIntegrity)
                 {
                     this.updater.CloseOverlay();
-                    throw new DalamudRunnerException("Updater returned no integrity.", this.updater.EnsurementException?.InnerException);
+                    throw new DalamudRunnerException("Dalamud 完整性检测或更新反复失败, 请检查你的本地网络环境", this.updater.EnsurementException?.InnerException);
                 }
 
                 Thread.Yield();
             }
 
             if (!this.updater.Runner.Exists)
-                throw new DalamudRunnerException("Runner did not exist.");
+                throw new DalamudRunnerException("Dalamud 本地注入文件不存在, 请重新启动 XIVLauncher 以开始完整性检测与下载流程");
 
             return DalamudInstallState.Ok;
         }
