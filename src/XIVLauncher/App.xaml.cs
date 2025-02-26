@@ -194,11 +194,10 @@ namespace XIVLauncher
                 try
                 {
                     DalamudUpdater = new DalamudUpdater(new DirectoryInfo(Path.Combine(Paths.RoamingPath, "addon")),
-                        new DirectoryInfo(Path.Combine(Paths.RoamingPath, "runtime")),
-                        new DirectoryInfo(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
-                        new DirectoryInfo(Paths.RoamingPath),
-                        UniqueIdCache,
-                        Settings.DalamudRolloutBucket);
+                                                        new DirectoryInfo(Path.Combine(Paths.RoamingPath, "runtime")),
+                                                        new DirectoryInfo(Path.Combine(Paths.RoamingPath, "dalamudAssets")),
+                                                        UniqueIdCache,
+                                                        Settings.DalamudRolloutBucket);
 
                     if (this._dalamudRunnerOverride != null)
                     {
@@ -448,7 +447,7 @@ namespace XIVLauncher
 
                     try
                     {
-                        changelogWindow = new ChangelogWindow(EnvironmentSettings.IsPreRelease);
+                        changelogWindow = new ChangelogWindow();
                     }
                     catch (Exception ex)
                     {

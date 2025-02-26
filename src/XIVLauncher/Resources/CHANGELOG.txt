@@ -1,1 +1,5 @@
-* 用 Cloudflare 包装了 Dalamud 资源文件的下载
+* 完成了运行时下载逻辑的迁移, 现在直接从 Microsoft 拉取并下载
+* 完全重写了 XIVLauncher 有关 Dalamud 更新的逻辑 
+* 优化了 Dalamud (Soil) 在线哈希文件的获取逻辑, 现在会在程序启动时静默获取一次并保存, 后续会复用以加快速度
+
+注: XIVLauncherCN (Soil) 与 Dalamud (Soil) 并不对 Windows 以外的平台提供任何支持, 如有需要请使用原版 XIVLauncherCN

@@ -2,13 +2,10 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Net;
 using System.Text;
 using System.Threading;
-using Newtonsoft.Json;
 using Serilog;
 using XIVLauncher.Common.PlatformAbstractions;
-using XIVLauncher.Common.Util;
 
 namespace XIVLauncher.Common.Dalamud
 {
@@ -49,9 +46,7 @@ namespace XIVLauncher.Common.Dalamud
             this.noThirdPlugin = noThirdPlugin;
             this.troubleshootingData = troubleshootingData;
         }
-
-        public const string REMOTE_BASE = ServerAddress.MainAddress + "/Dalamud/Release/VersionInfo?track=";
-
+        
         public DalamudInstallState HoldForUpdate(DirectoryInfo gamePath)
         {
             Log.Information("[HOOKS] DalamudLauncher::HoldForUpdate(gp:{0})", gamePath.FullName);
@@ -72,15 +67,6 @@ namespace XIVLauncher.Common.Dalamud
 
             if (!this.updater.Runner.Exists)
                 throw new DalamudRunnerException("Runner did not exist.");
-
-            // if (!ReCheckVersion(gamePath))
-            // {
-            //     this.updater.SetOverlayProgress(IDalamudLoadingOverlay.DalamudUpdateStep.Unavailable);
-            //     this.updater.ShowOverlay();
-            //     Log.Error("[HOOKS] ReCheckVersion fail");
-            //
-            //     return DalamudInstallState.OutOfDate;
-            // }
 
             return DalamudInstallState.Ok;
         }
@@ -120,7 +106,6 @@ namespace XIVLauncher.Common.Dalamud
                 DalamudInjectorArgs.ClientLanguage((int)startInfo.Language),
                 DalamudInjectorArgs.DelayInitialize(startInfo.DelayInitializeMs),
                 DalamudInjectorArgs.TsPackB64(Convert.ToBase64String(Encoding.UTF8.GetBytes(startInfo.TroubleshootingPackData))),
-
             };
 
             if (safeMode) launchArguments.Add("--no-plugin");
@@ -132,9 +117,7 @@ namespace XIVLauncher.Common.Dalamud
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
-
-            // psi.EnvironmentVariables.Add("DALAMUD_RUNTIME", startInfo.RuntimeDirectory);
-
+            
             var dalamudProcess = Process.Start(psi);
             while (!dalamudProcess.StandardOutput.EndOfStream)
             {
@@ -189,19 +172,6 @@ namespace XIVLauncher.Common.Dalamud
                 Log.Information("[HOOKS] Started dalamud!");
 
             return process;
-        }
-
-        private bool ReCheckVersion(DirectoryInfo gamePath)
-        {
-            if (this.updater.State != DalamudUpdater.DownloadState.Done)
-                return false;
-
-            if (this.updater.RunnerOverride != null)
-                return true;
-
-            var info = DalamudVersionInfo.Load(new FileInfo(Path.Combine(this.updater.Runner.DirectoryName!, "version.json")));
-
-            return Repository.Ffxiv.GetVer(gamePath) == info.SupportedGameVer;
         }
 
         // always return true

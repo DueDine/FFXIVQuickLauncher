@@ -12,7 +12,7 @@ namespace XIVLauncher.Common.Game
 {
     public static class IntegrityCheck
     {
-        public const string INTEGRITY_CHECK_BASE_URL = ServerAddress.S3Address + "/xlassets/integrity/";
+        public const string INTEGRITY_CHECK_BASE_URL = "https://s3.ffxiv.wang/xlassets/integrity/";
 
         public class IntegrityCheckResult
         {

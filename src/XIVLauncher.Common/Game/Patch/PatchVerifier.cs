@@ -73,7 +73,7 @@ namespace XIVLauncher.Common.Game.Patch
         public long Speed { get; private set; }
         public Exception LastException { get; private set; }
 
-        private const string BASE_URL = ServerAddress.S3Address + "/xlassets/patchinfo/";
+        private const string BASE_URL = "https://s3.ffxiv.wang/xlassets/patchinfo/";
 
         public enum VerifyState
         {

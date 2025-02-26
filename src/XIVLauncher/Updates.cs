@@ -22,17 +22,6 @@ namespace XIVLauncher
         public event Action<bool>? OnUpdateCheckFinished;
         private const string       UPDATE_URL = "https://github.com/AtmoOmen/FFXIVQuickLauncher";
 
-#if DEV_SERVER
-        private const string LEASE_META_URL = "http://localhost:5025/Launcher/GetLease";
-        private const string LEASE_FILE_URL = "http://localhost:5025/Launcher/GetFile";
-#else
-        private const string LEASE_META_URL = ServerAddress.MainAddress + "/Launcher/GetLease";
-        private const string LEASE_FILE_URL = ServerAddress.MainAddress + "/Launcher/GetFile";
-#endif
-
-        private const string TRACK_RELEASE    = "Release";
-        private const string TRACK_PRERELEASE = "Prerelease";
-
         public static Lease? UpdateLease { get; private set; }
 
         [Flags]

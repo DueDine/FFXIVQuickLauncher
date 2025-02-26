@@ -14,8 +14,7 @@ public static class Dxvk
     private const string DXVK_DOWNLOAD = ServerAddress.S3Address + "/xlcore/deps/dxvk/osx/dxvk-macOS-async-v1.10.3-20230507-repack.tar.gz";
     private const string DXVK_NAME = "dxvk-macOS-async-v1.10.3-20230507-repack";
 #else
-    // private const string DXVK_DOWNLOAD = "https://github.com/Sporif/dxvk-async/releases/download/1.10.1/dxvk-async-1.10.1.tar.gz";
-    private const string DXVK_DOWNLOAD = ServerAddress.S3Address + "/xlcore/deps/dxvk/linux/dxvk-async-1.10.1.tar.gz";
+    private const string DXVK_DOWNLOAD = "https://github.com/Sporif/dxvk-async/releases/download/1.10.1/dxvk-async-1.10.1.tar.gz";
     private const string DXVK_NAME = "dxvk-async-1.10.1";
 #endif
 

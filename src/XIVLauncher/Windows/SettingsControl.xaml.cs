@@ -420,9 +420,8 @@ namespace XIVLauncher.Windows
 
         private void VersionLabel_OnMouseUp(object sender, MouseButtonEventArgs e)
         {
-            var cw = new ChangelogWindow(EnvironmentSettings.IsPreRelease);
+            var cw = new ChangelogWindow();
             cw.UpdateVersion(AppUtil.GetAssemblyVersion());
-            cw.ShowDialog();
         }
 
         private void LearnMoreButton_OnClick(object sender, RoutedEventArgs e)

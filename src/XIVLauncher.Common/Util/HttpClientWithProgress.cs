@@ -27,13 +27,15 @@ public class HttpClientDownloadWithProgress : IDisposable
     {
         timeout ??= TimeSpan.FromMinutes(10);
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-        this.httpClient = new HttpClient(new HttpClientHandler() { AutomaticDecompression = DecompressionMethods.GZip }) { Timeout = timeout.Value };
-        //this.httpClient.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 Edg/130.0.0.0");
+        
+        this.httpClient = new HttpClient(new HttpClientHandler { AutomaticDecompression = DecompressionMethods.GZip }) { Timeout = timeout.Value };
         this.httpClient.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
         this.httpClient.DefaultRequestHeaders.Add("accept-encoding", "gzip, deflate, br");
+        
         var request = new HttpRequestMessage(HttpMethod.Get, this.downloadUrl);
-        if (!downloadUrl.Contains(ServerAddress.MainAddress))
+        if (downloadUrl.Contains("github"))
             request.Headers.Add("User-Agent", "Mozilla/5.0 (Linux; Android 6.0; Nexus 5 Build/MRA58N) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36 Edg/130.0.0.0");
+        
         using var response = await this.httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
         await this.DownloadFileFromHttpResponseMessage(response).ConfigureAwait(false);
     }
@@ -75,7 +77,8 @@ public class HttpClientDownloadWithProgress : IDisposable
 
             if (readCount % 100 == 0)
                 this.TriggerProgressChanged(totalDownloadSize, totalBytesRead);
-        } while (isMoreToRead);
+        } 
+        while (isMoreToRead);
     }
 
     private void TriggerProgressChanged(long? totalDownloadSize, long totalBytesRead)

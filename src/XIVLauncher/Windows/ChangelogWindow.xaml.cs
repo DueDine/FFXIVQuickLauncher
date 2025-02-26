@@ -20,9 +20,6 @@ namespace XIVLauncher.Windows
     /// </summary>
     public partial class ChangelogWindow : Window
     {
-        private readonly bool _prerelease;
-        private const string META_URL = ServerAddress.MainAddress + "/Proxy/Meta";
-
         public class VersionMeta
         {
             [JsonProperty("version")]
@@ -49,9 +46,8 @@ namespace XIVLauncher.Windows
 
         private ChangeLogWindowViewModel Model => this.DataContext as ChangeLogWindowViewModel;
 
-        public ChangelogWindow(bool prerelease)
+        public ChangelogWindow()
         {
-            _prerelease = prerelease;
             InitializeComponent();
 
             this.DiscordButton.Click += SupportLinks.OpenDiscordChannel;
@@ -81,35 +77,6 @@ namespace XIVLauncher.Windows
         {
             SystemSounds.Asterisk.Play();
             base.Show();
-            //
-            // LoadChangelog();
-        }
-
-        public new void ShowDialog()
-        {
-            // base.ShowDialog();
-            //
-            // LoadChangelog();
-        }
-
-        private void LoadChangelog()
-        {
-            var _ = Task.Run(async () =>
-            {
-                try
-                {
-                    using var client = new HttpClient();
-                    client.DefaultRequestHeaders.Add("User-Agent", PlatformHelpers.GetVersion());
-                    var response = JsonConvert.DeserializeObject<ReleaseMeta>(await client.GetStringAsync(META_URL));
-
-                    Dispatcher.Invoke(() => this.ChangeLogText.Text = _prerelease ? response.PrereleaseVersion.Changelog : response.ReleaseVersion.Changelog);
-                }
-                catch (Exception ex)
-                {
-                    Log.Error(ex, "Could not get changelog");
-                    Dispatcher.Invoke(() => this.ChangeLogText.Text = Model.ChangelogLoadingErrorLoc);
-                }
-            });
         }
     }
 }
